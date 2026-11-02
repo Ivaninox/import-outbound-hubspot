@@ -1,779 +1,671 @@
-<title>Refonte HubSpot FFY</title>
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Import outbound FFY</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap">
 <style>
-/* Layout : barre de navigation fixe en haut, cinq vues (Constats, Plan, Funnel, Suivi, Questions) affichées une à la fois. Le funnel est un plan de travail en colonnes avec flèches et panneau de détail. */
-/* DA : nouvel admin FFY (mêmes tokens que l'Audit Prod et l'Espace client v2) */
-:root{color-scheme:light dark;
-  --paper:light-dark(#fafafa,#23272a); --surface:light-dark(#fff,#2b2f33); --sunk:light-dark(#f4f4f5,#353a3f);
-  --ink:light-dark(#23272a,#eceef0); --muted:light-dark(#71717a,#a0a7ad); --line:light-dark(#e4e4e7,#40454a); --border:light-dark(#c6c6c6,#50565c);
-  --green:#60eed2;
-  --accent:light-dark(#0b7f6c,#60eed2); --accent-ink:light-dark(#fff,#181b1d); --accent-soft:light-dark(#e4fbf6,#173a35);
-  --blue:light-dark(#2934cf,#8c93ff); --blue-soft:light-dark(#e9eafa,#252950);
-  --edge:var(--border); --client:light-dark(#e0f5e5,#173322); --recy:light-dark(#f4f4f5,#30353a);
-  --t-garder:light-dark(#08741f,#6fe38d); --t-garder-bg:light-dark(#e0f5e5,#173322);
-  --t-corriger:light-dark(#865400,#f7c46a); --t-corriger-bg:light-dark(#fdf2dc,#3a2e15);
-  --t-creer:light-dark(#0b7f6c,#60eed2); --t-creer-bg:light-dark(#e4fbf6,#173a35);
-  --t-couper:light-dark(#c30004,#ff8a8c); --t-couper-bg:light-dark(#fce5e5,#3d1c1d);
-  --t-trancher:light-dark(#9520a8,#d17ce0); --t-trancher-bg:light-dark(#f6e6f8,#3a2240);
-  --r:.625rem;
-  --f-display:"Work Sans",ui-sans-serif,system-ui,sans-serif;
-  --f-body:"Work Sans",ui-sans-serif,system-ui,sans-serif;
-  --f-mono:"Work Sans",ui-sans-serif,system-ui,sans-serif;
+/* Layout : un seul écran de travail. Dépôt et réglages en haut, tableau de contrôle au centre, barre de téléchargement collée en bas. DA de l'admin FFY. */
+:root{
+  --paper:#fafafa;--surface:#fff;--sunk:#f4f4f5;--ink:#23272a;--muted:#676770;--line:#e4e4e7;--border:#c6c6c6;
+  --brand:#60eed2;--accent:#0b7f6c;--accent-ink:#fff;--accent-soft:#e4fbf6;
+  --ok:#08741f;--ok-bg:#e0f5e5;--warn:#865400;--warn-bg:#fdf2dc;--err:#c30004;--err-bg:#fce5e5;
+  --r:.625rem;--f:"Work Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
 }
-:root[data-theme="light"]{color-scheme:light}:root[data-theme="dark"]{color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#23272a;--surface:#2b2f33;--sunk:#353a3f;--ink:#eceef0;--muted:#a0a7ad;--line:#40454a;--border:#50565c;
+  --accent:#60eed2;--accent-ink:#181b1d;--accent-soft:#173a35;
+  --ok:#6fe38d;--ok-bg:#173322;--warn:#f7c46a;--warn-bg:#3a2e15;--err:#ff8a8c;--err-bg:#3d1c1d;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#23272a;--surface:#2b2f33;--sunk:#353a3f;--ink:#eceef0;--muted:#a0a7ad;--line:#40454a;--border:#50565c;
+  --accent:#60eed2;--accent-ink:#181b1d;--accent-soft:#173a35;
+  --ok:#6fe38d;--ok-bg:#173322;--warn:#f7c46a;--warn-bg:#3a2e15;--err:#ff8a8c;--err-bg:#3d1c1d;color-scheme:dark}
 *{box-sizing:border-box}
-html,body{background:var(--paper)}
-body{color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
-h1,h2,h3{text-wrap:balance}
+html{background:var(--paper)}
+body{background:var(--paper);color:var(--ink);font:400 15px/1.5 var(--f);-webkit-font-smoothing:antialiased}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.wrap{max-width:1120px;margin:0 auto}
-/* nav */
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
-.top .wrap{display:flex;align-items:center;gap:18px;min-height:58px;flex-wrap:wrap}
-.brand{font-family:var(--f-display);font-weight:800;font-size:17px;letter-spacing:-.01em;white-space:nowrap}
-.brand span{color:var(--accent)}
-.nav{display:flex;gap:2px;overflow-x:auto;flex:1;min-width:0}
-.nav a{font-weight:600;font-size:14px;color:var(--muted);text-decoration:none;padding:8px 11px;border-radius:6px;white-space:nowrap}
-.nav a:hover{background:var(--sunk);color:var(--ink)}
-.nav a[aria-current="page"]{background:var(--ink);color:var(--paper)}
-.nav a:focus-visible,button:focus-visible,.node:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.badge{font-family:var(--f-mono);font-size:11px;background:var(--t-trancher);color:var(--surface);border-radius:10px;padding:0 6px;margin-left:5px}
-main{padding-block:32px 72px}
-.view[hidden]{display:none}
-.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
-.view h1{font-family:var(--f-display);font-weight:800;font-size:clamp(30px,4.6vw,46px);line-height:1.05;letter-spacing:-.02em;margin:0 0 12px;max-width:22ch}
-.lede{font-size:17px;color:var(--muted);max-width:66ch;margin:0 0 28px}
-h2.sec{font-family:var(--f-display);font-weight:700;font-size:24px;line-height:1.2;margin:44px 0 6px}
-p.sub{color:var(--muted);margin:0 0 18px;max-width:66ch}
-.callout{background:var(--accent-soft);border-radius:8px;padding:14px 16px;margin:0 0 24px;max-width:780px}
-.callout b{color:var(--accent)}
-/* figures */
-.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
-.fig{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px}
-.fig strong{display:block;font-family:var(--f-display);font-weight:700;font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
-.fig span{font-size:13px;color:var(--muted)}
-.fig.alert strong{color:var(--accent)}
-/* bars */
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px}
-.bars{display:flex;flex-direction:column;gap:9px;position:relative}
-.bar{display:grid;grid-template-columns:150px minmax(0,1fr) 54px;gap:10px;align-items:center;font-size:13.5px}
-.bar .track{height:14px;background:var(--sunk);border-radius:3px;position:relative;overflow:visible}
-.bar .fill{height:100%;border-radius:3px;background:var(--blue)}
-.bar .fill.low{background:var(--accent)}
-.bar .val{font-family:var(--f-mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
-.bar .target{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);opacity:.55}
-.chartnote{font-size:12.5px;color:var(--muted);margin:12px 0 0}
-.stack{display:flex;height:30px;border-radius:4px;overflow:hidden;margin:6px 0 10px}
-.stack div{display:flex;align-items:center;justify-content:center;font:500 12px var(--f-mono);color:var(--surface)}
-.keys{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted)}
-.keys i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
-/* constats */
-.constats{display:flex;flex-direction:column;gap:14px}
-.constat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:20px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:24px}
-.constat h3{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0 0 6px;line-height:1.2}
-.constat .num{font-family:var(--f-mono);font-size:12px;color:var(--accent);margin-bottom:6px}
-.constat p{margin:0 0 10px;font-size:14.5px}
-.constat .why{font-size:13.5px;color:var(--muted)}
-.forsales{background:var(--blue-soft);border-radius:6px;padding:10px 12px;font-size:13.5px;margin-top:4px}
-.forsales b{color:var(--blue);font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:2px}
-.good{border-left:3px solid var(--t-garder)}
-/* plan */
-.phases{display:flex;flex-direction:column;gap:0}
-.phase{display:grid;grid-template-columns:120px minmax(0,1fr);gap:20px;position:relative;padding-bottom:22px}
-.phase:not(:last-child)::before{content:"";position:absolute;left:59px;top:56px;bottom:0;width:2px;background:var(--line)}
-.ph-when{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
-.ph-num{width:46px;height:46px;border-radius:50%;background:var(--surface);border:2px solid var(--ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:19px}
-.phase.now .ph-num{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.ph-when span{font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
-.ph-body{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px}
-.ph-body h3{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0 0 4px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.ph-body > p{margin:0 0 12px;color:var(--muted);font-size:14px}
-.chip{font-family:var(--f-mono);font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;letter-spacing:.03em}
-.chip.now{background:var(--accent);color:var(--accent-ink)}
-.chip.next{background:var(--sunk);color:var(--muted)}
-.chip.done{background:var(--t-garder-bg);color:var(--t-garder)}
-.acts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
-.acts li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
-.acts li small{grid-column:1/-1;color:var(--muted);font-size:13px}
-.acts .who{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);text-align:right;white-space:nowrap}
-.acts .q{grid-column:1/-1;justify-self:start}
-/* tags */
-.tag{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:.03em;padding:2px 7px;border-radius:4px;white-space:nowrap}
-.tag::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
-.tag.garder{color:var(--t-garder);background:var(--t-garder-bg)} .tag.corriger{color:var(--t-corriger);background:var(--t-corriger-bg)}
-.tag.creer{color:var(--t-creer);background:var(--t-creer-bg)} .tag.couper{color:var(--t-couper);background:var(--t-couper-bg)}
-.tag.trancher{color:var(--t-trancher);background:var(--t-trancher-bg)}
-.qlink{font:500 12px var(--f-mono);color:var(--t-trancher);background:var(--t-trancher-bg);border:0;border-radius:4px;padding:2px 8px;cursor:pointer}
-.pill{display:inline-block;font-size:12px;font-weight:600;background:var(--blue-soft);color:var(--blue);border-radius:4px;padding:1px 7px;white-space:nowrap}
-/* funnel */
-.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted);align-items:center;margin:0 0 22px}
-.lk{display:inline-flex;align-items:center;gap:6px}
-.lk i{width:10px;height:10px;border-radius:2px;display:inline-block}
-.dots{display:flex;flex-wrap:wrap;gap:8px;font:500 11px var(--f-mono);color:var(--muted)}
-.dots span{display:inline-flex;align-items:center;gap:4px}
-.dots i{width:8px;height:8px;border-radius:2px;display:inline-block}
-i.d-garder{background:var(--t-garder)} i.d-corriger{background:var(--t-corriger)} i.d-creer{background:var(--t-creer)} i.d-couper{background:var(--t-couper)} i.d-trancher{background:var(--t-trancher)}
-.rowlbl{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
-.flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:30px}
-.fcol{display:flex;flex-direction:column;min-width:0}
-.entries{min-height:176px;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;padding-bottom:16px;position:relative}
-.entries.has::after{content:"";position:absolute;left:50%;bottom:2px;margin-left:-6px;border:6px solid transparent;border-top-color:var(--muted);border-bottom:0}
-.entry{display:flex;align-items:center;gap:8px;width:100%;border:0;border-radius:6px;padding:7px 10px;font:600 13px var(--f-body);cursor:pointer;text-align:left;background:var(--ink);color:var(--paper)}
-.entry small{margin-left:auto;font:500 10.5px var(--f-mono);letter-spacing:.04em;opacity:.75;text-transform:uppercase}
-.entry.out{background:var(--blue);color:var(--surface)}
-.entry.cli{background:var(--t-garder);color:var(--surface)}
-.entry.back{background:var(--surface);color:var(--accent);border:1.5px dashed var(--accent)}
-.entry:hover{filter:brightness(1.12)}
-.stagecard{position:relative;flex:1;background:var(--surface);border:1px solid var(--line);border-top:5px solid var(--accent);border-radius:10px;padding:14px 14px 12px;text-align:left;font:inherit;color:inherit;cursor:pointer;display:flex;flex-direction:column;gap:10px;min-height:330px}
-.stagecard:hover{border-color:var(--ink);border-top-color:var(--accent)}
-.stagecard.client{border-top-color:var(--t-garder)}
-.fcol:not(:last-child) .stagecard::after{content:"→";position:absolute;right:-28px;top:44%;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;font-size:15px;z-index:1}
-.sc-head{display:flex;gap:10px;align-items:center}
-.sc-num{flex:none;width:32px;height:32px;border-radius:50%;background:var(--ink);color:var(--paper);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:16px}
-.sc-name{font-family:var(--f-display);font-weight:700;font-size:19px;line-height:1.1}
-.sc-now{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);background:var(--sunk);border-radius:4px;padding:4px 7px}
-.sc-what{margin:0;padding-left:16px;font-size:13px;display:flex;flex-direction:column;gap:6px}
-.sc-lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
-.sc-sts{display:flex;flex-wrap:wrap;gap:4px}
-.sc-who{font-size:12.5px}
-.sc-foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:8px;padding-top:9px;border-top:1px dashed var(--line);font:500 11.5px var(--f-mono);color:var(--muted)}
-.sc-foot .more{color:var(--accent);white-space:nowrap}
-.qb2{position:absolute;top:-12px;right:10px;background:var(--t-trancher);color:var(--surface);font:600 11px var(--f-mono);border-radius:10px;padding:2px 8px}
-.pipe{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
-.pipe li{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:600;padding:6px 9px;background:var(--blue-soft);color:var(--ink);border-radius:5px;position:relative}
-.pipe li:not(:last-child)::after{content:"";position:absolute;left:16px;bottom:-9px;border:5px solid transparent;border-top-color:var(--blue);border-bottom:0}
-.pipe li span{font:500 10.5px var(--f-mono);color:var(--muted);white-space:nowrap}
-.pipe li.won{background:var(--client)}
-.exits{min-height:118px;display:flex;flex-direction:column;gap:6px;padding-top:12px}
-.exit{display:flex;align-items:baseline;gap:7px;font-size:12.5px;background:var(--recy);border-radius:6px;padding:6px 9px;line-height:1.3}
-.exit::before{content:"↓";font-weight:700;color:var(--muted);flex:none}
-.exit b{font-weight:600}
-.exit.loop{background:var(--client)}
-.exit.loop::before{content:"↺";color:var(--t-garder)}
-.recyband{background:var(--recy);border-radius:12px;padding:16px 16px 18px;margin-top:2px}
-.recyband h3{font-family:var(--f-display);font-weight:700;font-size:18px;margin:0 0 2px}
-.recyband > p{margin:0 0 14px;font-size:13.5px;color:var(--muted);max-width:70ch}
-.rcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:10px}
-.rcard{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:11px 12px;text-align:left;font:inherit;color:inherit;cursor:pointer;display:flex;flex-direction:column;gap:5px}
-.rcard:hover{border-color:var(--ink)}
-.rcard .t{font-weight:600;font-size:14px;line-height:1.25}
-.rcard .n{font-family:var(--f-display);font-weight:700;font-size:22px;line-height:1;font-variant-numeric:tabular-nums}
-.rcard .s{font-size:12.5px;color:var(--muted);line-height:1.35}
-.rcard.react{border:2px solid var(--accent)}
-.rcard .back{font:500 11.5px var(--f-mono);color:var(--accent)}
-.lanes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
-.lane{background:var(--surface);border:1px solid var(--line);border-top:5px solid var(--accent);border-radius:12px;padding:16px;display:flex;flex-direction:column;min-width:0}
-.lane.out{border-top-color:var(--blue)}
-.lane-head{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
-.lane-tag{align-self:flex-start;font:600 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:var(--accent);color:var(--accent-ink)}
-.lane.out .lane-tag{background:var(--blue);color:var(--surface)}
-.lane-head h3{font-family:var(--f-display);font-weight:700;font-size:22px;line-height:1.15;margin:0}
-.lane-head p{margin:0;font-size:13.5px;color:var(--muted)}
-.lane-head .sc-now{align-self:flex-start}
-.lrow{display:flex;flex-direction:column;gap:2px}
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chips .entry{width:auto}
-.lane.in .chips .entry{background:var(--accent);color:var(--accent-ink)}
-.down{align-self:center;width:2px;height:22px;background:var(--line);position:relative;margin:4px 0 10px}
-.down::after{content:"";position:absolute;left:-5px;bottom:-6px;border:6px solid transparent;border-top-color:var(--muted);border-bottom:0}
-.lstep{position:relative;width:100%;text-align:left;font:inherit;color:inherit;background:var(--sunk);border:1px solid transparent;border-radius:8px;padding:12px 13px;cursor:pointer;display:flex;flex-direction:column;gap:6px}
-.lstep:hover{border-color:var(--ink)}
-.lstep .k{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.lstep .t{font-weight:600;font-size:15px;line-height:1.25}
-.lstep .s{font-size:13px;color:var(--muted)}
-.lstep.ok{background:var(--client)}
-.lstep.ko{background:var(--accent-soft)}
-.split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.lnote{margin-top:10px;text-align:left;font:inherit;font-size:12.5px;color:var(--muted);background:none;border:1px dashed var(--line);border-radius:8px;padding:8px 10px;cursor:pointer}
-.lnote b{color:var(--ink)}
-.outcomes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;font-size:12.5px}
-.outcomes li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line)}
-.outcomes li.win span:first-child{font-weight:600}
-.merge{display:flex;flex-direction:column;align-items:center;gap:8px;margin:6px 0 22px;text-align:center}
-.merge p{margin:0;font-size:14px}
-.merge-arrows{display:flex;gap:40%;width:60%;justify-content:center}
-.merge-arrows i{display:block;width:2px;height:26px;background:var(--line);position:relative}
-.merge-arrows i::after{content:"";position:absolute;left:-5px;bottom:-6px;border:6px solid transparent;border-top-color:var(--muted);border-bottom:0}
-.flow3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:30px}
-.flow3 .stagecard{min-height:0}
-.entry.mini{display:inline-flex;width:auto;align-self:flex-start;font-size:12px;padding:4px 8px;cursor:default}
-@media (max-width:900px){.lanes,.split,.flow3{grid-template-columns:1fr}.merge-arrows{display:none}}
-.reacti{margin-top:14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
-.reacti h4{margin:0 0 10px;font-family:var(--f-display);font-weight:700;font-size:16px}
-.reacti-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:10px}
-.reacti-grid b{font-size:13.5px}
-.reacti-grid ul{margin:6px 0 0;padding-left:18px;font-size:13px;display:flex;flex-direction:column;gap:4px}
-@media (max-width:900px){.reacti-grid{grid-template-columns:1fr}}
-.sub-step{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
-.sub-step h4{margin:0;font-size:15px;line-height:1.3;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.sub-step h4 small{font:500 10.5px var(--f-mono);color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
-.sub-step p{margin:0}
-@media (max-width:900px){
-  .flow3{gap:10px}
-  .entries,.exits{min-height:0}
-  .entries:not(.has),.exits:empty{display:none}
-  .stagecard{min-height:0}
-  .fcol:not(:last-child) .stagecard::after{display:none}
-  .fcol:not(:last-child)::after{content:"↓";align-self:center;width:28px;height:28px;margin-top:8px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700}
-}
-/* detail panel */
-.detail{position:fixed;z-index:40;top:0;right:0;bottom:0;width:min(400px,100%);background:var(--surface);border-left:1px solid var(--line);box-shadow:-12px 0 30px rgba(0,0,0,.12);transform:translateX(105%);transition:transform .22s ease;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
-.detail.open{transform:none}
-.detail header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 18px 10px;border-bottom:1px solid var(--line)}
-.detail header h3{font-family:var(--f-display);font-weight:700;font-size:20px;margin:2px 0 0;line-height:1.2}
-.detail .body{overflow-y:auto;padding:14px 18px 24px;display:flex;flex-direction:column;gap:12px;font-size:14px}
-.detail .row{display:flex;gap:10px;align-items:baseline}
-.detail .row b{flex:none;width:70px;font-family:var(--f-mono);font-size:10.5px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.wfl{display:flex;flex-direction:column;gap:10px}
-.wfl > div{display:flex;flex-direction:column;gap:4px;padding:10px;border:1px solid var(--line);border-radius:6px}
-.wfl small{color:var(--muted);font-size:13px}
-.decbox{background:var(--t-trancher-bg);border-radius:6px;padding:10px 12px;font-size:13px}
-.decbox ol{margin:6px 0;padding-left:18px}
-.outs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.outs li{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.close{font:600 20px var(--f-body);line-height:1;background:var(--sunk);border:0;border-radius:6px;width:32px;height:32px;cursor:pointer;color:var(--ink);flex:none}
-@media (max-width:700px){
-  .detail{top:auto;left:0;width:100%;height:72%;border-left:0;border-top:1px solid var(--line);border-radius:14px 14px 0 0;transform:translateY(105%);padding-left:env(safe-area-inset-left,0px)}
-}
-/* tables, lists */
-.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px}
-table{border-collapse:collapse;width:100%;min-width:680px;font-size:13.5px}
-th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-family:var(--f-mono);font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.wrap{max-width:1280px;margin:0 auto}
+.top{background:var(--surface);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:14px;min-height:60px;flex-wrap:wrap;padding-block:8px}
+.logo{width:48px;height:auto;flex:none;color:var(--ink)}
+.top b{font-weight:600}
+.private{margin-left:auto;font-size:13px;color:var(--muted)}
+main{padding-block:24px 0;display:flex;flex-direction:column;min-width:0}
+main>.gut>.wrap{width:100%;display:flex;flex-direction:column;gap:16px;min-width:0}
+h1{font-weight:700;font-size:clamp(24px,3vw,30px);line-height:1.15;letter-spacing:-.015em;margin:0 0 4px;text-wrap:balance}
+.lede{margin:0;color:var(--muted);max-width:68ch}
+.grid{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.step{display:flex;align-items:center;gap:10px;margin:0;font-size:16px;font-weight:600;line-height:1.25;text-wrap:balance}
+.step i{flex:none;width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--paper);display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:700}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:112px;padding:14px;text-align:center;border:1.5px dashed var(--border);border-radius:var(--r);background:var(--sunk);cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.drop strong{font-weight:600}
+.drop span{font-size:13px;color:var(--muted)}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.drop.has strong{color:var(--accent)}
+.pasterow{display:flex;gap:8px;align-items:center}
+.pasterow label{flex:none;font-size:13px;color:var(--muted)}
+#paste{flex:1;min-width:0;height:36px;min-height:36px;resize:none;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-size:13px;line-height:20px;overflow:hidden}
+.alert{margin:0;padding:9px 12px;border-radius:6px;font-size:14px;background:var(--err-bg);color:var(--err)}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-weight:500;font-size:14px}
+.field select{height:40px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);width:100%}
+.field small{font-size:13px;color:var(--muted)}
+.field.need select{border-color:var(--err)}
+.head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.chip{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:13.5px;font-weight:500;cursor:pointer;font-variant-numeric:tabular-nums}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,var(--muted))}
+.chip.error{--c:var(--err)}.chip.warn{--c:var(--warn)}.chip.ok{--c:var(--ok)}
+.chip:hover{border-color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.demo{margin:0;padding:9px 12px;border-radius:6px;background:var(--accent-soft);font-size:14px}
+.demo b{color:var(--accent);font-weight:600}
+details.cols{border:1px solid var(--line);border-radius:6px}
+details.cols summary{cursor:pointer;padding:8px 12px;font-size:14px;font-weight:500}
+details.cols summary span{font-weight:400;color:var(--muted)}
+.colgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px 14px;padding:4px 12px 12px}
+.colgrid label{display:flex;flex-direction:column;gap:3px;font-size:13px;font-weight:500}
+.colgrid select{height:34px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-weight:400;min-width:0;width:100%}
+.colnote{margin:0;padding:0 12px 12px;font-size:13px;color:var(--muted)}
+.tablewrap{overflow:auto;max-height:min(68vh,720px);border:1px solid var(--line);border-radius:6px}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:1180px;font-size:13.5px}
+th{position:sticky;top:0;z-index:2;background:var(--sunk);text-align:left;font-weight:600;font-size:13px;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:0;border-bottom:1px solid var(--line);vertical-align:top;background:var(--surface)}
 tr:last-child td{border-bottom:0}
-td.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
-.wfgroups{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
-.wfgroup{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px}
-.wfgroup h3{font-size:14px;margin:0 0 10px;display:flex;gap:8px;align-items:center}
-.wfgroup ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px;font-size:13.5px}
-.wfgroup small{display:block;color:var(--muted);font-size:12.5px}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
-.ritual{display:flex;flex-direction:column;gap:0}
-.ritual div{display:grid;grid-template-columns:130px minmax(0,1fr) auto;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
-.ritual div:first-child{border-top:0}
-.ritual b{font-weight:600}
-.ritual span.t{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
-.log{list-style:none;margin:0;padding:0}
-.log li{display:grid;grid-template-columns:90px minmax(0,1fr);gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
-.log li:first-child{border-top:0}
-.log time{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
-/* questions */
-.qgroup h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:34px 0 12px}
-.qs{display:flex;flex-direction:column;gap:12px}
-.q{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--t-trancher);border-radius:8px;padding:18px}
-.q.done{border-left-color:var(--t-garder);opacity:.85}
-.dchip{font:600 11px var(--f-mono);font-style:normal;background:var(--t-garder-bg);color:var(--t-garder);border-radius:4px;padding:2px 7px;margin-left:auto;white-space:nowrap}
-.q .dtext{color:var(--ink)}
-.q .dtext b{color:var(--t-garder)}
-.q.flash{box-shadow:0 0 0 3px var(--t-trancher-bg)}
-.q h3{font-size:16px;margin:0 0 6px;line-height:1.35;display:flex;gap:10px;align-items:baseline}
-.q h3 span{flex:none;font-family:var(--f-mono);font-size:12px;color:var(--t-trancher)}
-.q p{margin:0 0 8px;font-size:14px;color:var(--muted)}
-.q ol{margin:0 0 10px;padding-left:20px;font-size:14px;display:flex;flex-direction:column;gap:4px}
-.q .reco{margin:0;font-size:14px;color:var(--ink)}
-.q .reco b{color:var(--t-trancher)}
-.q .mini{margin:6px 0 10px;font-size:13px}
-.q .mini td,.q .mini th{padding:5px 8px}
-.q table{min-width:0}
-footer{color:var(--muted);font-size:12.5px;margin-top:48px}
-@media (max-width:760px){
-  .constat{grid-template-columns:1fr;gap:12px}
-  .phase{grid-template-columns:1fr;gap:10px}.phase::before{display:none}
-  .ph-when{flex-direction:row;justify-content:flex-start}
-  .bar{grid-template-columns:110px minmax(0,1fr) 46px}
-  .ritual div{grid-template-columns:1fr}
-  .board{margin-left:0;margin-right:0}
-}
-@media (prefers-reduced-motion:reduce){.detail{transition:none}}
-
-/* ---------- DA admin FFY : barre latérale, en-têtes, composants ---------- */
-body{margin:0;font:400 15px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
-.side{position:fixed;inset:0 auto 0 0;width:244px;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;z-index:30}
-.side-top{padding:18px 24px;border-bottom:1px solid var(--line);display:grid;gap:10px;justify-items:start}
-.side .logo{width:64px;height:auto;color:var(--ink)}
-.env{font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--green);color:#23272a;padding:2px 8px;border-radius:6px}
-.hello{font-weight:600;font-size:.95rem}
-.side .nav{flex:1;overflow:auto;padding:18px 16px;display:grid;align-content:start;gap:4px}
-.ngrp{font-size:.75rem;color:var(--muted);padding:10px 8px 6px}
-.side .nav a{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:8px;text-decoration:none;font-size:.95rem;font-weight:500;color:var(--ink)}
-.side .nav a .n{flex:none;width:22px;height:22px;border-radius:50%;border:1.5px solid currentColor;display:grid;place-items:center;font-size:.7rem;font-weight:700}
-.side .nav a:hover{background:var(--sunk);color:var(--ink)}
-.side .nav a[aria-current="page"]{background:var(--ink);color:var(--surface)}
-.side .nav .badge{margin-left:auto;font-family:var(--f-body);font-weight:700}
-.side-bot{padding:14px 16px 18px;border-top:1px solid var(--line);display:grid;gap:12px}
-.theme{display:grid;grid-template-columns:repeat(3,1fr);background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:4px}
-.theme button{border:0;background:none;border-radius:999px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
-.theme button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
-.theme svg{width:15px;height:15px}
-.side-note{font-size:.78rem;color:var(--muted);padding:0 6px}
-main.main{margin-left:244px;padding:28px 28px 48px}
-main.main .wrap{max-width:1160px;margin:0}
-.view h1{font-family:var(--f-display);font-weight:700;font-size:clamp(24px,2.6vw,30px);line-height:1.15;letter-spacing:-.015em;max-width:30ch}
-.eyebrow{font-family:var(--f-body);font-weight:600;font-size:.72rem;letter-spacing:.06em}
-.lede{font-size:15.5px}
-h2.sec{font-weight:700;font-size:1.15rem;margin-top:36px}
-.fig,.panel,.constat,.ph-body,.tablewrap,.wfgroup,.q,.reacti,.rcard,.sub-step,.wfl > div{border-radius:var(--r)}
-.fig strong,.rcard .n{font-weight:700;letter-spacing:-.03em}
-.constat h3,.ph-body h3,.lane-head h3,.sc-name,.recyband h3,.qgroup h2,.detail header h3{font-weight:700}
-th{font-family:var(--f-body);font-size:.8rem;font-weight:600;text-transform:none;letter-spacing:0;background:var(--sunk)}
-.chip,.tag,.qlink,.dchip,.sc-now,.lane-tag{font-family:var(--f-body);font-weight:600;border-radius:6px}
-.tag{background:color-mix(in srgb,currentColor 14%,transparent)!important}
-.callout{background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--green) 55%,transparent);border-radius:var(--r)}
-.forsales{background:color-mix(in srgb,var(--green) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--green) 60%,transparent)}
-.forsales b{color:var(--accent);font-family:var(--f-body);font-weight:700}
-.badge{font-family:var(--f-body)}
-footer{margin-top:40px}
-@media (max-width:760px){
-  body{font-size:14.5px}
-  .side{position:sticky;top:0;width:auto;height:auto;flex-direction:row;align-items:center;border-right:0;border-bottom:1px solid var(--line)}
-  .side-top{border:0;padding:10px 12px;display:flex;align-items:center}.side .logo{width:44px}.hello,.env,.ngrp,.side-note{display:none}
-  .side .nav{display:flex;overflow-x:auto;padding:8px;gap:4px;scrollbar-width:none}
-  .side .nav a{padding:6px;flex:none}.side .nav a .t{display:none}
-  .side-bot{border:0;padding:8px}.theme{width:110px}
-  main.main{margin-left:0;padding:18px 12px 28px}
-}
-@media print{.side{display:none}main.main{margin:0}}
-.acts .q{background:none;border:0;padding:0;border-radius:0}
+th:first-child,td:first-child{position:sticky;left:0;z-index:1;border-right:1px solid var(--line)}
+th:first-child{z-index:3;width:218px;min-width:218px}
+td.st{padding:7px 8px;font-size:12.5px;line-height:1.35;min-width:218px;width:218px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12.5px}
+.pill::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.st ul{margin:2px 0 0;padding:0;list-style:none;color:var(--ink)}
+.st .ln{float:right;color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px}
+tr.error td.st{background:var(--err-bg)}tr.error .pill{color:var(--err)}
+tr.warn td.st{background:var(--warn-bg)}tr.warn .pill{color:var(--warn)}
+tr.ok .pill{color:var(--ok)}
+tr.dup .pill,tr.removed .pill{color:var(--muted)}
+tr.dup td,tr.removed td{background:var(--sunk)}
+tr.dup input,tr.dup select,tr.removed input,tr.removed select{color:var(--muted)}
+td input,td select{display:block;width:100%;height:36px;padding:0 8px;border:0;border-radius:0;background:transparent;min-width:0}
+td input:hover,td select:hover{background:var(--sunk)}
+td input:focus,td select:focus{outline:2px solid var(--accent);outline-offset:-2px;background:var(--surface)}
+td .bad{box-shadow:inset 0 -2px 0 var(--err);background:var(--err-bg)}
+td .guess{font-style:italic;color:var(--muted)}
+.c-first{min-width:112px}.c-last{min-width:132px}.c-email{min-width:250px}.c-phone{min-width:132px}.c-company{min-width:190px}.c-job{min-width:200px}.c-sector{min-width:190px}.c-city{min-width:120px}.c-act{width:78px;min-width:78px}
+.linkbtn{background:none;border:0;padding:8px;font-size:12.5px;color:var(--muted);cursor:pointer;text-decoration:underline}
+.linkbtn:hover{color:var(--ink)}
+.empty{padding:22px;text-align:center;color:var(--muted)}
+.more{align-self:center;height:36px;padding:0 14px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;font-weight:500}
+.hs ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-width:80ch}
+.hs li b{font-weight:600}
+.hs.done{border-color:var(--accent);background:var(--accent-soft)}
+.saved{margin:0;font-weight:600;color:var(--accent)}
+.fallback{display:flex;flex-direction:column;gap:8px}
+.fallback textarea{height:90px;width:100%;font-size:12px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--surface)}
+.btn2{align-self:flex-start;height:36px;padding:0 14px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;font-weight:500}
+.bar{position:sticky;bottom:0;z-index:5;background:var(--surface);border-top:1px solid var(--line);margin-top:16px;padding-bottom:env(safe-area-inset-bottom,0px)}
+.bar .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding-block:10px}
+.count{font-size:14px;min-width:0;flex:1 1 280px}
+.count b{font-weight:600;font-variant-numeric:tabular-nums}
+.count span{color:var(--muted)}
+.cta{height:44px;padding:0 20px;border:0;border-radius:8px;background:var(--brand);color:#181b1d;font-weight:600;cursor:pointer;white-space:nowrap}
+.cta:hover:not(:disabled){filter:brightness(.94)}
+.cta:disabled{background:var(--sunk);color:var(--muted);cursor:not-allowed}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}.chips{margin-left:0}.private{margin-left:0;flex-basis:100%}.pasterow{flex-direction:column;align-items:stretch}.cta{width:100%}
+  th:first-child,td:first-child{position:static}}
+@media (prefers-reduced-motion:reduce){.drop{transition:none}}
 </style>
 
-<aside class="side" aria-label="Navigation">
-  <div class="side-top"><svg class="logo" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 87 70" role="img" aria-label="Flying For You"><path fill="#00FFDA" d="M72.542 40.289c-1.117.363-2.31.363-3.458.584-.895.174-1.918.396-2.639.97-.346.274-.556.693-.417 1.127.157.492.958.283.799-.214-.007-.019-.027-.115-.019-.053.01.066.007-.034.002-.05.01.052.005.068.005-.004s-.023.029.003-.012q.025-.04.052-.08c.03-.047-.05.055-.012.014l.03-.032q.038-.038.08-.075l.036-.032c.08-.07-.041.027.011-.008.344-.235.637-.34 1.021-.461.423-.134.855-.235 1.291-.318q.308-.058.618-.107l.136-.019.057-.008c.064-.01-.067.008-.004 0q.113-.014.226-.026c.81-.086 1.627-.168 2.404-.422.502-.164.287-.94-.222-.774"/><path fill="#00FFDA" d="M75.132 23.889c-.782 2.392-.623 4.924-.395 7.387.117 1.249.249 2.497.285 3.752.03 1.007 0 2.027-.306 2.998-.15.477-.373.948-.703 1.333-.388.455-.895.767-1.466.961-.21.072-.352.275-.29.495.056.198.298.354.51.281 1.104-.376 1.979-1.099 2.466-2.138.45-.956.602-2.014.625-3.056.056-2.547-.446-5.070-.48-7.614-.02-1.417.11-2.83.553-4.186.162-.493-.638-.705-.8-.213"/><path fill="currentColor" d="M40.32 26.344c1.925 0 3.395 1.667 3.095 3.512l-.06.366c-.24 1.476-1.552 2.564-3.095 2.564-1.926 0-3.396-1.668-3.096-3.512l.06-.366c.242-1.477 1.554-2.564 3.095-2.564M36.965 34.297h6.345l-4.246 26.158H32.72z"/><path stroke="#00FFDA" stroke-miterlimit="10" stroke-width="0.815" d="M85.308 12.933c.934-5.765-1.98-10.998-6.507-11.688-4.528-.69-8.956 3.425-9.89 9.19-.935 5.766 1.978 11 6.507 11.689 4.528.69 8.956-3.425 9.890-9.190Z"/><path fill="#00FFDA" d="m75.928 22.047-2.02 1.42a.312.312 0 0 0 .116.562l2.456.563c.258.06.479-.193.374-.43z"/><path fill="currentColor" d="M3.39 39.49H1.895l.849-5.173h1.496l.698-4.303c.898-5.463 2.693-5.85 9.573-5.85l-.848 5.174c-2.095 0-2.294.192-2.493 1.402l-.598 3.578h1.596l-.848 5.174H9.723l-3.44 20.933H0zM15.661 24.164h6.332L16.06 60.422H9.727zM15.258 69.997l.848-5.172c3.49 0 3.99-.725 4.19-3.964l.648-26.54h6.682L25.48 52.11h.298l3.641-17.79h6.682l-8.528 28.425c-1.695 5.414-3.192 7.25-12.316 7.25M48.168 60.408l3.291-20.207c.2-1.016 0-1.451-.548-1.451-.549 0-.998.532-1.147 1.644l-3.291 20.014H40.14l4.288-26.105h4.987l.3 2.707h.199c1.097-2.175 2.842-3.432 4.686-3.432 2.693 0 3.84 2.707 3.041 7.542L54.5 60.41h-6.332zM71.713 51.098c-.797 4.834-3.79 7.541-8.377 7.541H61.89c-.648 0-.948.193-.997.629-.1.483.149.628.697.628h3.79c2.942 0 4.637 1.547 4.089 4.786C68.869 68.26 66.177 70 61.289 70h-.35c-4.238 0-6.43-1.16-6.083-3.239.249-1.595 1.795-2.271 5.086-2.32l.05-.192c-3.041-.049-4.438-.92-4.138-2.804.3-1.692 1.795-2.949 4.138-3.336v-.193c-2.244-.967-3.142-3.335-2.594-6.817l1.497-9.089c.697-4.35 3.241-7.058 6.83-7.397 1.448-.193 1.845-.628 1.996-1.499l.298-1.934h5.337l-.15 1.015c-.199 1.257-.797 2.32-4.138 2.32l-.05.193c3.391.58 4.838 3.143 4.188 7.3zM60.345 64.973c-.05.484.199.677.948.677h2.144c.748 0 1.048-.193 1.097-.677.1-.483-.149-.724-.898-.724h-2.095c-.749-.002-1.097.24-1.196.724m6.082-25.284c-.599 0-.898.387-1.048 1.402l-1.794 10.926c-.2 1.015 0 1.45.598 1.45s.898-.387 1.097-1.45l1.795-10.926c.15-1.015-.048-1.402-.648-1.402"/><path stroke="#00FFDA" stroke-miterlimit="10" stroke-width="0.652" d="M66.258 42.82c.013.124.74 2.426 2.55 3.268 1.787.832 4.024-.042 4.67-1.266.264-.496.135-1.346-.495-1.449"/></svg><span class="env">Refonte 2026</span><span class="hello">HubSpot FFY</span></div>
-  <nav class="nav" aria-label="Sections"><span class="ngrp">Projet</span>
-    <a href="#constats" data-v="constats"><span class="n">1</span><span class="t">Constats</span></a>
-    <a href="#plan" data-v="plan"><span class="n">2</span><span class="t">Plan d'action</span></a>
-    <a href="#funnel" data-v="funnel"><span class="n">3</span><span class="t">Nouveau funnel</span></a>
-    <a href="#suivi" data-v="suivi"><span class="n">4</span><span class="t">Suivi</span></a>
-    <a href="#questions" data-v="questions"><span class="n">✓</span><span class="t">Décisions</span><span class="badge" id="qcount"></span></a>
-  </nav>
-  <div class="side-bot">
-    <div class="theme" role="group" aria-label="Thème"><button type="button" data-t="light" aria-label="Clair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><button type="button" data-t="dark" aria-label="Sombre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button><button type="button" data-t="system" aria-label="Système"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button></div>
-    <span class="side-note">Document interne · données HubSpot au 14/10/2026</span>
-  </div>
-</aside>
+<header class="top gut"><div class="wrap">
+  <svg class="logo" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 87 70" role="img" aria-label="Flying For You"><path fill="#00FFDA" d="M72.542 40.289c-1.117.363-2.31.363-3.458.584-.895.174-1.918.396-2.639.97-.346.274-.556.693-.417 1.127.157.492.958.283.799-.214-.007-.019-.027-.115-.019-.053.01.066.007-.034.002-.05.01.052.005.068.005-.004s-.023.029.003-.012q.025-.04.052-.08c.03-.047-.05.055-.012.014l.03-.032q.038-.038.08-.075l.036-.032c.08-.07-.041.027.011-.008.344-.235.637-.34 1.021-.461.423-.134.855-.235 1.291-.318q.308-.058.618-.107l.136-.019.057-.008c.064-.01-.067.008-.004 0q.113-.014.226-.026c.81-.086 1.627-.168 2.404-.422.502-.164.287-.94-.222-.774"/><path fill="#00FFDA" d="M75.132 23.889c-.782 2.392-.623 4.924-.395 7.387.117 1.249.249 2.497.285 3.752.03 1.007 0 2.027-.306 2.998-.15.477-.373.948-.703 1.333-.388.455-.895.767-1.466.961-.21.072-.352.275-.29.495.056.198.298.354.51.281 1.104-.376 1.979-1.099 2.466-2.138.45-.956.602-2.014.625-3.056.056-2.547-.446-5.070-.48-7.614-.02-1.417.11-2.83.553-4.186.162-.493-.638-.705-.8-.213"/><path fill="currentColor" d="M40.32 26.344c1.925 0 3.395 1.667 3.095 3.512l-.06.366c-.24 1.476-1.552 2.564-3.095 2.564-1.926 0-3.396-1.668-3.096-3.512l.06-.366c.242-1.477 1.554-2.564 3.095-2.564M36.965 34.297h6.345l-4.246 26.158H32.72z"/><path stroke="#00FFDA" stroke-miterlimit="10" stroke-width="0.815" d="M85.308 12.933c.934-5.765-1.98-10.998-6.507-11.688-4.528-.69-8.956 3.425-9.89 9.19-.935 5.766 1.978 11 6.507 11.689 4.528.69 8.956-3.425 9.890-9.190Z"/><path fill="#00FFDA" d="m75.928 22.047-2.02 1.42a.312.312 0 0 0 .116.562l2.456.563c.258.06.479-.193.374-.43z"/><path fill="currentColor" d="M3.39 39.49H1.895l.849-5.173h1.496l.698-4.303c.898-5.463 2.693-5.85 9.573-5.85l-.848 5.174c-2.095 0-2.294.192-2.493 1.402l-.598 3.578h1.596l-.848 5.174H9.723l-3.44 20.933H0zM15.661 24.164h6.332L16.06 60.422H9.727zM15.258 69.997l.848-5.172c3.49 0 3.99-.725 4.19-3.964l.648-26.54h6.682L25.48 52.11h.298l3.641-17.79h6.682l-8.528 28.425c-1.695 5.414-3.192 7.25-12.316 7.25M48.168 60.408l3.291-20.207c.2-1.016 0-1.451-.548-1.451-.549 0-.998.532-1.147 1.644l-3.291 20.014H40.14l4.288-26.105h4.987l.3 2.707h.199c1.097-2.175 2.842-3.432 4.686-3.432 2.693 0 3.84 2.707 3.041 7.542L54.5 60.41h-6.332zM71.713 51.098c-.797 4.834-3.79 7.541-8.377 7.541H61.89c-.648 0-.948.193-.997.629-.1.483.149.628.697.628h3.79c2.942 0 4.637 1.547 4.089 4.786C68.869 68.26 66.177 70 61.289 70h-.35c-4.238 0-6.43-1.16-6.083-3.239.249-1.595 1.795-2.271 5.086-2.32l.05-.192c-3.041-.049-4.438-.92-4.138-2.804.3-1.692 1.795-2.949 4.138-3.336v-.193c-2.244-.967-3.142-3.335-2.594-6.817l1.497-9.089c.697-4.35 3.241-7.058 6.83-7.397 1.448-.193 1.845-.628 1.996-1.499l.298-1.934h5.337l-.15 1.015c-.199 1.257-.797 2.32-4.138 2.32l-.05.193c3.391.58 4.838 3.143 4.188 7.3zM60.345 64.973c-.05.484.199.677.948.677h2.144c.748 0 1.048-.193 1.097-.677.1-.483-.149-.724-.898-.724h-2.095c-.749-.002-1.097.24-1.196.724m6.082-25.284c-.599 0-.898.387-1.048 1.402l-1.794 10.926c-.2 1.015 0 1.45.598 1.45s.898-.387 1.097-1.45l1.795-10.926c.15-1.015-.048-1.402-.648-1.402"/><path stroke="#00FFDA" stroke-miterlimit="10" stroke-width="0.652" d="M66.258 42.82c.013.124.74 2.426 2.55 3.268 1.787.832 4.024-.042 4.67-1.266.264-.496.135-1.346-.495-1.449"/></svg>
+  <b>Import outbound</b>
+  <span class="private">Ton fichier reste sur ton ordinateur : rien n'est envoyé ni enregistré.</span>
+</div></header>
 
-<main class="main" id="top"><div class="wrap">
-
-<!-- ============ CONSTATS ============ -->
-<section class="view" id="v-constats">
-  <p class="eyebrow">Audit du HubSpot · octobre 2026</p>
-  <h1>Notre CRM ne nous aide plus assez à vendre</h1>
-  <p class="lede">On a passé toute la base au crible : contacts, deals, tâches et automatisations. Voici ce qu'on a trouvé, ce que ça coûte au quotidien, et pourquoi on veut tout recadrer avant de corriger quoi que ce soit.</p>
-
-  <div class="figs" id="figs"></div>
-
-  <h2 class="sec">Les fiches sont vides là où ça compte</h2>
-  <p class="sub">Part des 16 196 contacts dont chacun des 10 champs obligatoires est rempli. Le trait marque la cible de 85 %.</p>
-  <div class="panel"><div class="bars" id="fillbars"></div>
-    <p class="chartnote">Source : HubSpot, relevé du 14 octobre 2026. « Non renseigné » et « Étudiant(e) » comptent comme vides pour le secteur. Propriétaire = propriétaire encore dans l'équipe.</p></div>
-
-  <h2 class="sec">Six constats</h2>
-  <p class="sub">Pour chacun : le chiffre, ce qu'il veut dire, d'où il vient, et ce que ça change pour l'équipe commerciale.</p>
-  <div class="constats" id="constats"></div>
-
-  <h2 class="sec">Ce qui marche déjà</h2>
-  <div class="constat good"><div><h3>Les leads entrants sont rappelés vite</h3><p>Un lead Google Ads ou SEO est contacté en 21 heures en médiane. La séquence d'arrivée et le lien de RDV font leur travail.</p></div>
-  <div><div class="forsales"><b>Pour les commerciaux</b>On garde ce réflexe. Le nouveau funnel ajoute juste une tâche d'appel quand le lead ne répond pas aux emails.</div></div></div>
-</section>
-
-<!-- ============ PLAN ============ -->
-<section class="view" id="v-plan" hidden>
-  <p class="eyebrow">Plan d'action</p>
-  <h1>D'abord cadrer, ensuite corriger</h1>
-  <p class="lede">Rien ne change dans HubSpot tant que le funnel n'est pas validé et que les questions ouvertes ne sont pas tranchées. Ensuite, on corrige ce qui abîme la base, puis on nettoie, puis on tient.</p>
-  <div class="callout"><b>Qui fait quoi.</b> Ivan fait toutes les modifications dans HubSpot. Claude prépare les listes et les fiches pas à pas, puis vérifie en lecture seule. Claude n'écrit dans HubSpot que les corrections de fiches qu'Ivan a validées.</div>
-  <div class="phases" id="phases"></div>
-</section>
-
-<!-- ============ FUNNEL ============ -->
-<section class="view" id="v-funnel" hidden>
-  <p class="eyebrow">Nouveau funnel · proposition à valider</p>
-  <h1>Deux façons d'arriver, un seul parcours de vente</h1>
-  <p class="lede">Deux couloirs au départ : l'inbound, où le lead vient à nous, et l'outbound, où on va le chercher. Ils se rejoignent au premier RDV, puis le parcours est le même pour tous. En bas, ce que deviennent ceux qui sortent. Clique sur une étape pour le détail.</p>
-  <div class="legend">
-    <span class="lk"><i style="background:var(--accent)"></i>Inbound</span>
-    <span class="lk"><i style="background:var(--blue)"></i>Outbound</span>
-    <span class="lk"><i style="background:var(--ink)"></i>Réseau</span>
-    <span class="lk"><i style="background:var(--t-garder)"></i>Client existant</span>
-    <span>Workflows :</span>
-    <span class="lk"><i class="d-garder"></i>à garder</span>
-    <span class="lk"><i class="d-corriger"></i>à corriger</span>
-    <span class="lk"><i class="d-creer"></i>à créer</span>
-    <span class="lk"><i class="d-couper"></i>à couper</span>
-    <span class="lk"><i class="d-trancher"></i>question à trancher</span>
-  </div>
-  <div id="flow"></div>
-  <div class="recyband" id="recy"></div>
-
-  <h2 class="sec">Les statuts du lead</h2>
-  <p class="sub">Ce que chaque statut veut dire, qui le pose, et ce qui vient après. C'est la référence à partager avec les commerciaux.</p>
-  <div class="tablewrap"><table><thead><tr><th>Statut</th><th>Ce qu'il veut dire</th><th>Posé par</th><th>Et ensuite</th></tr></thead><tbody id="statusrows"></tbody></table></div>
-
-  <h2 class="sec">Les workflows à traiter</h2>
-  <p class="sub">Tous les workflows cités dans le funnel, regroupés par ce qu'il faut en faire. C'est la liste de travail de la phase 1.</p>
-  <div class="wfgroups" id="wfgroups"></div>
-</section>
-
-<!-- ============ SUIVI ============ -->
-<section class="view" id="v-suivi" hidden>
-  <p class="eyebrow">Suivi</p>
-  <h1>Tenir la base dans la durée</h1>
-  <p class="lede">Une fois les corrections faites, un contrôle toutes les deux semaines garde le HubSpot propre. Cette page sert aussi de tableau d'avancement du projet.</p>
-
-  <h2 class="sec">Les indicateurs</h2>
-  <p class="sub">Point de départ relevé le 14 octobre 2026, sauf mention contraire. Chaque rapport met la colonne « dernier relevé » à jour.</p>
-  <div class="tablewrap"><table><thead><tr><th>Indicateur</th><th>Point de départ</th><th>Dernier relevé</th><th>Cible</th></tr></thead><tbody id="kpis"></tbody></table></div>
-
-  <div class="grid2" style="margin-top:28px">
-    <div><h2 class="sec" style="margin-top:0">Le rituel</h2>
-      <div class="panel ritual" id="ritual"></div></div>
-    <div><h2 class="sec" style="margin-top:0">Avancement</h2>
-      <div class="panel"><div class="tablewrap" style="border:0"><table style="min-width:0"><tbody id="progress"></tbody></table></div></div></div>
+<main>
+<div class="gut"><div class="wrap">
+  <div>
+    <h1>Prépare ta liste pour HubSpot</h1>
+    <p class="lede">Dépose ton export, corrige ce qui est en rouge, puis télécharge le fichier à importer. Les numéros, les noms et les valeurs HubSpot sont remis au bon format pour toi.</p>
   </div>
 
-  <h2 class="sec">Ce que contient chaque rapport</h2>
-  <div class="panel"><ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px">
-    <li>Les indicateurs ci-dessus et leur évolution depuis le dernier passage.</li>
-    <li>Une section par commercial : fiches à compléter, contacts et deals sans prochaine étape, deals inactifs au-delà du seuil de leur étape, tâches en retard, contacts à qualifier.</li>
-    <li>Les contacts sans propriétaire actif, avec leur secteur pour la réattribution.</li>
-    <li>Les corrections de fiches proposées, à valider par Ivan.</li>
-    <li>Les leads à prioriser selon le scoring, avec le signal détecté pour chacun.</li>
-  </ol></div>
+  <div class="grid">
+    <section class="panel" aria-labelledby="s1">
+      <h2 class="step" id="s1"><i>1</i>Dépose ton fichier</h2>
+      <label class="drop" id="drop" for="file">
+        <input type="file" id="file" accept=".csv,.tsv,.txt,.xlsx,.xls">
+        <strong id="dropT">Glisse ton export ici, ou clique pour le choisir</strong>
+        <span id="dropS">CSV ou Excel, avec les colonnes dans n'importe quel ordre</span>
+      </label>
+      <div class="pasterow">
+        <label for="paste">Ou colle tes lignes (depuis un Sheet)</label>
+        <textarea id="paste" rows="1" placeholder="Colle ici, avec la ligne de titres" aria-label="Coller des lignes"></textarea>
+      </div>
+      <p class="alert" id="fileErr" role="alert" hidden></p>
+    </section>
 
-  <h2 class="sec">Journal des décisions</h2>
-  <div class="panel"><ul class="log" id="log"></ul></div>
-</section>
+    <section class="panel" aria-labelledby="s2">
+      <h2 class="step" id="s2"><i>2</i>Dis-nous à qui est cette liste</h2>
+      <div class="field" id="fCom">
+        <label for="commercial">Ton prénom</label>
+        <select id="commercial"><option value="">Choisir</option></select>
+        <small id="comHelp">Il remplit la source d'acquisition du contact.</small>
+      </div>
+      <div class="field">
+        <label for="sector">Secteur de cette liste</label>
+        <select id="sector"><option value="">Selon le fichier, ou ligne par ligne</option></select>
+        <small id="secHelp">Choisis-le une fois : il s'applique à tous les contacts. Tu peux le changer sur une ligne.</small>
+      </div>
+    </section>
+  </div>
 
-<!-- ============ QUESTIONS ============ -->
-<section class="view" id="v-questions" hidden>
-  <p class="eyebrow">Cadrage terminé le 14 octobre 2026</p>
-  <h1>Les décisions prises ensemble</h1>
-  <p class="lede">Chaque question a ma recommandation. Les questions déjà tranchées restent affichées en vert, avec la décision. Une fois toutes tranchées, le funnel est figé, le plan démarre et on présente le tout aux commerciaux.</p>
-  <div id="qlist"></div>
-</section>
+  <section class="panel" aria-labelledby="s3">
+    <div class="head">
+      <h2 class="step" id="s3"><i>3</i>Vérifie les contacts</h2>
+      <div class="chips" id="chips" role="group" aria-label="Filtrer les contacts"></div>
+    </div>
+    <p class="demo" id="demo"><b>Exemple avec des contacts fictifs.</b> Il montre ce que fait la page. Dépose ton fichier pour le remplacer.</p>
+    <details class="cols" id="cols">
+      <summary id="colsS"></summary>
+      <div class="colgrid" id="colgrid"></div>
+      <p class="colnote">Changer une colonne relit le fichier : les corrections faites dans le tableau sont perdues.</p>
+    </details>
+    <div class="tablewrap" id="tw">
+      <table>
+        <thead><tr>
+          <th>État</th><th class="c-first">Prénom</th><th class="c-last">Nom</th><th class="c-email">Email</th><th class="c-phone">Téléphone</th><th class="c-company">Entreprise</th><th class="c-job">Poste</th><th class="c-sector">Secteur</th><th class="c-city">Ville</th><th class="c-act"><span hidden>Action</span></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <button class="more" id="more" type="button" hidden></button>
+  </section>
 
-<footer>Préparé pour Ivan Messias et l'équipe commerciale FFY. Données HubSpot relevées le 8 octobre (audit) et le 14 octobre 2026.</footer>
-</div></main>
+  <section class="panel hs" id="hs" aria-labelledby="s4">
+    <h2 class="step" id="s4"><i>4</i>Importe le fichier dans HubSpot</h2>
+    <p class="saved" id="saved" role="status" hidden></p>
+    <div class="fallback" id="fallback" hidden>
+      <p class="alert">Le téléchargement n'est pas disponible depuis cette page. Copie le contenu ci-dessous, colle-le dans un fichier texte et enregistre-le en .csv.</p>
+      <textarea id="fbText" readonly aria-label="Contenu du fichier CSV"></textarea>
+      <button class="btn2" id="fbCopy" type="button">Copier le contenu</button>
+    </div>
+    <ol>
+      <li>Dans HubSpot, ouvre <b>Contacts</b>, puis <b>Importer</b>, et choisis le fichier téléchargé.</li>
+      <li>Choisis de <b>créer uniquement de nouveaux contacts</b> : un contact déjà dans HubSpot garde son statut, sa source et son propriétaire.</li>
+      <li>Vérifie que chaque colonne est associée à une propriété : aucune ne doit être ignorée.</li>
+      <li>Choisis-toi comme <b>propriétaire</b> pour tout le fichier.</li>
+      <li>Ne passe pas les contacts en <b>marketing</b> : ce statut est facturé et compte pour tout le mois.</li>
+    </ol>
+  </section>
+</div></div>
 
-<aside class="detail" id="detail" aria-hidden="true" aria-label="Détail de l'étape">
-  <header><div><div class="eyebrow" id="dk" style="margin:0"></div><h3 id="dt"></h3></div><button class="close" id="dclose" type="button" aria-label="Fermer">×</button></header>
-  <div class="body" id="dbody"></div>
-</aside>
+<div class="bar gut"><div class="wrap">
+  <p class="count" id="count" role="status" style="margin:0"></p>
+  <button class="cta" id="dl" type="button" disabled>Télécharger pour HubSpot</button>
+</div></div>
+</main>
 
 <script>
-const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+/* ===== À tenir à jour si HubSpot ou l'équipe change ===== */
+const COMMERCIAUX=["Cheikh","Simon","Marcel","Ivan"];           // chaque prénom doit exister dans la source d'acquisition « Outbound - prénom »
+const STATUT="📞 - À démarcher";
+const SECTEURS=[["Agence Immobilière","Immobilier"],["Agence Marketing / évènementiel","Agence Marketing"],["Aide à la personne","Aide à la personne"],["Animaux","Animaux"],["Application B2C","Plateforme de mise en relation"],["Artisan","Artisanat"],["Association","Association"],["Automobile","Concessionnaires / voitures / moto"],["Bailleurs sociaux","Bailleurs sociaux"],["Banques / Assurances / Conseil","Assurance"],["BTP","BTP"],["Culture / Sport","Culture"],["Education","Education"],["Énergies","Énergies"],["Énergies Renouvelables","Énergies Renouvelables"],["Esthétique / soins","Esthétique"],["Franchise restauration","Franchise restauration"],["Grande consommation","Grande consommation"],["Imprimeur","Imprimeur"],["Industrie","Industriel"],["Logistique","Transport"],["Mairies / Institutions publiques","Mairies"],["Mode","Mode"],["Partis politiques / Députés","Partis politiques et députés"],["Promoteur Immobilier","Promotteur immobilier"],["Restauration","Restauration"],["Retail","Retail"],["Santé","Santé"],["Service aux entreprises","Nettoyage"],["Telecommunications","Telecommunications"],["Tourisme","Tourisme"]];
+const PERSO=new Set("gmail.com googlemail.com hotmail.fr hotmail.com live.fr live.com outlook.fr outlook.com msn.com yahoo.fr yahoo.com icloud.com me.com orange.fr wanadoo.fr free.fr sfr.fr neuf.fr bbox.fr laposte.net gmx.fr gmx.com aol.com protonmail.com proton.me".split(" "));
+const GENERIQUES=new Set("contact info infos accueil bonjour hello commercial direction mairie secretariat admin communication marketing service sales".split(" "));
+const EXCEL_LIB="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+/* ======================================================== */
+
+const FIELDS=[["first","Prénom"],["last","Nom"],["full","Nom complet"],["email","Email"],["phone","Téléphone"],["company","Entreprise"],["job","Poste"],["sector","Secteur"],["city","Ville"]];
+const SYN={
+ first:["prenom","first name","firstname","given name","contact first name","person first name","prenom du contact"],
+ last:["nom","nom de famille","last name","lastname","family name","surname","contact last name","person last name"],
+ full:["nom complet","full name","fullname","name","contact","contact name","person name","nom et prenom","prenom nom","prenom et nom"],
+ email:["email","e mail","mail","adresse email","adresse e mail","adresse mail","email address","e mail address","courriel","work email","professional email","business email","email pro","email professionnel","contact email","person email","verified email"],
+ phone:["telephone","tel","phone","phone number","numero","numero de telephone","mobile","mobile phone","mobile number","portable","telephone mobile","telephone portable","gsm","telephone pro","work phone","direct phone","personal phone","contact phone","person phone","phone 1"],
+ company:["entreprise","societe","company","company name","organisation","organization","account","account name","compagnie","raison sociale","current company","nom de l entreprise","nom entreprise","employer"],
+ job:["poste","titre","job title","title","fonction","position","intitule du poste","current title","current position","role","job","jobtitle"],
+ sector:["secteur","secteur d activite","secteur activite","industry","company industry","activite"],
+ city:["ville","city","location","localisation","lieu","commune","person location","contact location","contact city","person city","current location"]
+};
+const REGIONS=new Set(["auvergne rhone alpes","bourgogne franche comte","bretagne","brittany","centre val de loire","corse","corsica","grand est","hauts de france","ile de france","normandie","normandy","nouvelle aquitaine","occitanie","pays de la loire","provence alpes cote d azur","france"]);
+
 const $=s=>document.querySelector(s);
-const TAGS={garder:"À garder",corriger:"À corriger",creer:"À créer",couper:"À couper",trancher:"À trancher"};
-const tag=k=>`<span class="tag ${k}">${TAGS[k]}</span>`;
-const qbtn=n=>`<button class="qlink" type="button" data-q="${n}">Question n°${n}</button>`;
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const norm=s=>String(s??"").replace(/([a-z])([A-Z])/g,"$1 $2").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+const SECT_INDEX=new Map();
+SECTEURS.forEach(([l,v])=>{SECT_INDEX.set(norm(l),l);SECT_INDEX.set(norm(v),l)});
+const SECT_VALUE=new Map(SECTEURS);
+const SECT_VIDES=new Set(["non renseigne","etudiant e","etudiante","etudiant"]);
 
-/* ---------- QUESTIONS ---------- */
-const QUESTIONS=[
- {g:"Le funnel",n:1,done:"Il garde son statut, sort de la base active et rejoint le vivier de réactivation trimestrielle.",t:"Que devient un contact en « Pas de réponse » après 90 jours sans échange ?",ctx:"« Fermé perdu » est réservé aux propositions qui n'ont pas abouti. Il faut une autre sortie pour les 2 384 contacts actuels et les suivants.",opts:["Il garde son statut, sort de la base active et rejoint le vivier de réactivation trimestrielle.","Il passe dans un nouveau statut « À réactiver »."],reco:"Option 1 : aucun statut en plus, et le vivier de réactivation se remplit tout seul."},
- {g:"Le funnel",n:2,done:"Pas de tâche : une vue « Email invalide » dans HubSpot pour chaque commercial, et une ligne par commercial dans le rapport toutes les deux semaines, avec les contacts à appeler ou à corriger.",t:"Comment alerter sur un hard bounce ou un désinscrit, sans surcharger les commerciaux de tâches ?",ctx:"Décidé : le statut ne change pas, et le contact est retiré des séquences et listes email. Reste l'alerte. Une tâche par contact ajouterait du bruit dans les listes de tâches.",opts:["Pas de tâche : une vue « Email invalide » dans HubSpot pour chaque commercial, et une ligne par commercial dans le rapport toutes les deux semaines, avec les contacts à appeler ou à corriger.","Une tâche automatique au propriétaire pour chaque contact concerné."],reco:"Option 1 : l'alerte arrive au rythme du rapport, sans une tâche de plus au quotidien."},
- {g:"Le funnel",n:3,done:"Attribution dès le formulaire, par rotation entre Cheikh, Simon et Marcel. Le RDV pris réattribue au commercial réservé.",t:"Qui prend un lead inbound qui n'a pas pris de RDV ?",ctx:"Aujourd'hui, le propriétaire n'est posé qu'au RDV. Sans RDV ni réponse, la tâche d'appel de fin de séquence n'a personne à qui être confiée. Simon a remplacé Uthmânn dans la rotation du lien de RDV.",opts:["Attribution dès l'arrivée, par rotation entre les commerciaux. Le RDV pris réattribue au commercial réservé.","Attribution par secteur dès l'arrivée.","Ivan répartit les leads chaque matin."],reco:"Option 1 : simple, automatique, et chaque lead a un responsable dès la première minute."},
- {g:"Le funnel",n:4,done:"Oui : une tâche 1 mois après la fin de campagne d'un deal gagné, en plus de la newsletter clients (nouveautés de l'application et actualités FFY).",t:"Ajoute-t-on une relance repeat sur les deals gagnés ?",ctx:"La tâche « 1 mois après la campagne » sert à relancer les deals perdus, et on la garde. Les clients font 35 % du CA gagné, mais rien ne déclenche leur relance.",opts:["Oui : une seconde tâche, 1 mois après la fin de campagne d'un deal gagné.","Non : on s'appuie sur la newsletter clients."],reco:"Option 1 : c'est le moteur de CA le plus rentable."},
- {g:"Le funnel",n:5,done:"Le workflow à 55 jours est désactivé. Le commercial passe lui-même ses deals en Fermé perdu ; seul un deal bloqué 90 jours à la même étape est fermé automatiquement.",t:"Coupe-t-on la fermeture automatique des deals à 55 jours ?",ctx:"La règle décidée : pas de fermeture automatique, le monitoring signale et le commercial décide. Ce workflow est pourtant toujours actif, sur deux étapes seulement.",opts:["On le coupe.","On le garde, étendu à toutes les étapes avec un seuil par étape."],reco:"Option 1, pour rester cohérent avec la règle."},
- {g:"Le funnel",n:6,done:"Tâche créée à J+3 par défaut, le commercial la décale à la date convenue avec le prospect.",t:"Quelle échéance pour la tâche « Rappeler » quand un prospect demande à être rappelé ?",ctx:"Le résultat d'appel « Connecté, à rappeler » crée une tâche sans vraie échéance : elle tombe en retard tout de suite, et les 123 tâches ouvertes sont obsolètes.",opts:["Le workflow crée la tâche à J+3 par défaut, et le commercial la décale à la date convenue avec le prospect.","Le workflow ne crée plus de tâche : le commercial la crée lui-même à la bonne date pendant l'appel."],reco:"Option 1 : aucun rappel n'est oublié, et la date reste juste si le commercial la corrige."},
- {g:"L'organisation commerciale",n:7,done:"Répartition à fixer par Ivan avec Cheikh, Simon et Marcel, avant la réattribution des orphelins.",t:"Quels secteurs pour Cheikh, Simon et Marcel ?",ctx:"2 993 contacts n'ont pas de propriétaire actif : 1 417 sans propriétaire, 1 576 chez d'anciens collaborateurs. On les réattribue par secteur. Les plus gros secteurs prioritaires :",mini:[["Partis politiques et députés","419"],["Mairies et institutions","342"],["Automobile","144"],["Culture et sport","75"],["BTP","58"],["Retail","35"],["Agences marketing","27"],["Énergies et ENR","26"]],opts:["Ivan donne la répartition des secteurs entre les trois commerciaux.","Rotation égale, sans tenir compte du secteur."],reco:"Option 1 : cohérent avec la prospection par verticale (automobile, mairies)."},
- {g:"L'organisation commerciale",n:8,done:"On rattrape le secteur, puis on attribue aux commerciaux, avant le nettoyage. Les contacts à supprimer sont écartés du rattrapage, et leur liste est validée nominativement.",t:"Que fait-on des 1 458 orphelins sans secteur ?",ctx:"La moitié des orphelins n'a pas de secteur. Une partie disparaîtra avec la suppression des contacts inutiles.",opts:["On attend la suppression, puis on répartit le reste à parts égales.","On les garde de côté jusqu'au rattrapage du secteur."],reco:"Option 1 : personne ne reste sans responsable."},
- {g:"L'organisation commerciale",n:9,done:"Définitions validées.",t:"Valide-t-on la définition de chaque étape du pipeline ?",ctx:"Pour que tout le monde fasse avancer les deals de la même façon, et que les seuils d'inactivité aient un sens.",opts:["Transaction ouverte : un RDV découverte est planifié.","R1 fait : le premier RDV a eu lieu, le besoin est compris.","R2 fait : un second échange a eu lieu (zones, volumes, dispositif).","Devis envoyé : un devis chiffré est parti, avec son montant dans HubSpot.","Fermé gagné : devis signé. Fermé perdu : proposition faite, refusée ou restée sans suite."],reco:"Valider ou corriger ces définitions, puis les rappeler dans le brief."},
- {g:"L'organisation commerciale",n:10,done:"« Transaction ouverte » est posé à la création du deal. Après le devis, on reste en « Devis envoyé » ; le commercial passe à la main en « Négociation en cours » s'il y a négociation.",t:"Que fait-on des statuts « Transaction ouverte » et « Négociation en cours » ?",ctx:"Ils doublent les étapes du pipeline et dépendent de la saisie du commercial, donc ils divergent souvent du deal.",opts:["Ils sont posés automatiquement à partir de l'étape du deal : deal ouvert = Transaction ouverte, Devis envoyé = Négociation en cours.","On les laisse en saisie manuelle."],reco:"Option 1 : une seule saisie, sur le deal."},
- {g:"L'organisation commerciale",n:13,done:"Les séquences multicanal (email + LinkedIn) restent sur Lemlist, surtout pour les contacts sans email. Il faut pouvoir réactiver facilement des leads depuis HubSpot : kit de séquences HubSpot.",t:"Que garde-t-on de Lemlist ?",ctx:"Les commerciaux construisent leurs listes avec Sales Navigator et Lemlist, et envoient quelques emails depuis Lemlist. Demain, ils pourront créer leurs séquences dans HubSpot, même d'un seul email. Garder deux outils d'envoi disperse le suivi : les réponses et les tâches arrivent de deux endroits.",opts:["Lemlist sert seulement à construire et enrichir les listes ; les emails partent des séquences HubSpot.","Lemlist garde aussi l'envoi des emails, HubSpot sert aux appels."],reco:"Option 1 : un seul endroit pour les emails, les réponses et les tâches, donc un suivi fiable par commercial."},
- {g:"L'organisation commerciale",n:14,done:"Propriété « Canal » sur le deal, remplie automatiquement à partir du canal du contact et modifiable à la main.",t:"Comment suit-on le CA par canal ?",ctx:"Le canal est aujourd'hui porté par la source d'acquisition du contact. Deux limites dans les rapports : un deal à deux contacts compte deux fois, et une source peut être écrasée par un workflow. Une propriété « Canal » sur le deal règle les deux : elle est posée une fois, par le workflow qui crée le deal, et ne bouge plus.",opts:["On crée la propriété « Canal » sur le deal (Inbound, Outbound, Réseau, Appel d'offres, Client).","On s'appuie sur la source d'acquisition du contact principal, en acceptant les doublons dans les rapports."],reco:"Option 1 : une seule propriété en plus, remplie automatiquement, et des chiffres de CA justes par canal."},
- {g:"Le pilotage",n:11,done:"Un lundi sur deux, à 8 h.",t:"Quand tombe le rapport de suivi ?",ctx:"Le contrôle démarre une fois les workflows corrigés (fin de phase 1).",opts:["Un lundi sur deux, à 8 h.","Un autre jour ou une autre heure."],reco:"Option 1 : le rapport arrive avant la réunion commerciale de la semaine."},
- {g:"Le pilotage",n:12,done:"30 minutes en réunion commerciale avec le site, plus un PowerPoint plus court et plus visuel.",t:"Comment présente-t-on le projet aux commerciaux ?",ctx:"Ils doivent comprendre pourquoi on change, ce qui change pour eux, et ce qu'on attend d'eux.",opts:["30 minutes en réunion commerciale, avec ce site, après validation du funnel.","Un message écrit avec le lien du site."],reco:"Option 1 : les questions des commerciaux peuvent encore corriger le funnel avant la phase 1."},
- {g:"Le pilotage",n:15,done:"Principe validé le 14 octobre. Les délais restent ajustables après la première vague.",t:"Valide-t-on les règles de la réactivation ?",ctx:"Aujourd'hui, rien ne fait revenir un lead endormi. La proposition est détaillée en bas de l'onglet Nouveau funnel.",opts:["Entrent au vivier : « Pas de réponse » sans échange depuis 90 jours, « Fermé perdu » depuis 6 mois, « En cours » sans activité depuis 6 mois, tout lead ouvert sans échange depuis 12 mois.","Chaque trimestre : liste priorisée par le scoring, 50 à 70 contacts par commercial, séquence HubSpot de 2 emails et 1 appel.","Après deux vagues sans réponse : le contact sort du vivier, et devient candidat à la suppression s'il n'a ni deal ni statut client."],reco:"Valider ces trois règles ou corriger les délais."},
- {g:"Le funnel",n:16,done:"On garde la boîte de Cheikh au démarrage.",t:"Depuis quelle boîte partent les emails de la séquence d'arrivée ?",ctx:"Les 4 séquences d'arrivée partent de la boîte de Cheikh. Avec la rotation, le lead peut appartenir à Simon ou Marcel. HubSpot peut envoyer depuis la boîte du propriétaire, mais cela change l'onglet Séquences de chaque commercial.",opts:["On garde la boîte de Cheikh au démarrage.","On envoie depuis la boîte du propriétaire du contact."],reco:"Option 1 au démarrage, à revoir après un mois de rotation. Non bloquant."},
- {g:"Le funnel",n:17,done:"Il reste en base. Avec un email, il entre dans le nurturing (newsletter et contenus de sa verticale) et son propriétaire reçoit une tâche de rappel à 3 mois, décalable jusqu'à 6. Sans email, fin du suivi.",t:"Que devient un contact « Pas intéressé » ?",ctx:"1 081 contacts aujourd'hui, dont 763 avec un email et 3 seulement en contact marketing. Un refus à un instant donné n'est pas un refus définitif. Point d'attention : le nurturing consomme des contacts marketing, plafonnés à 1 500.",opts:["Il reste en base. Avec un email, il entre dans le nurturing et une tâche de rappel est créée à 3 mois, décalable jusqu'à 6. Sans email, fin du suivi.","Fin du suivi, il sort de la base active."],reco:"Option 1, décidée par Ivan le 14/10."},
-];
-{const open=QUESTIONS.filter(q=>!q.done).length;$("#qcount").textContent=open;$("#qcount").hidden=open===0;}
-const groupsQ=[...new Set(QUESTIONS.map(q=>q.g))];
-$("#qlist").innerHTML=groupsQ.map(g=>`<div class="qgroup"><h2>${esc(g)}</h2><div class="qs">${QUESTIONS.filter(q=>q.g===g).map(q=>`<article class="q ${q.done?"done":""}" id="q${q.n}"><h3><span>N°${q.n}</span>${esc(q.t)}${q.done?`<em class="dchip">Décidé</em>`:""}</h3>${q.done?`<p class="dtext"><b>Décision :</b> ${esc(q.done)}</p>`:""}<p>${esc(q.ctx)}</p>${q.mini?`<table class="mini"><tbody>${q.mini.map(r=>`<tr><td>${esc(r[0])}</td><td class="n">${r[1]}</td></tr>`).join("")}</tbody></table>`:""}<ol>${q.opts.map(o=>`<li>${esc(o)}</li>`).join("")}</ol><p class="reco"><b>Recommandation :</b> ${esc(q.reco)}</p></article>`).join("")}</div></div>`).join("");
+const S={table:null,header:[],mapping:{},phoneExtra:[],rows:[],filter:"all",limit:200,sample:true,fileName:""};
 
-/* ---------- CONSTATS ---------- */
-const FIGS=[["16 196","contacts dans la base",""],["22 %","contactés depuis 6 mois","alert"],["71 %","de remplissage moyen des fiches",""],["2 993","contacts sans propriétaire actif","alert"],["70 / 75","deals ouverts sans date de fermeture valide","alert"],["623","contacts joignables en email marketing",""]];
-$("#figs").innerHTML=FIGS.map(([n,l,c])=>`<div class="fig ${c}"><strong>${n}</strong><span>${l}</span></div>`).join("");
-const FILL=[["Cycle de vie",16175],["Entreprise associée",15037],["Email",14443],["Source d'acquisition",13465],["Propriétaire actif",13203],["Téléphone",12380],["Statut du lead",10144],["Secteur",10077],["Poste",5696],["Qualité du lead",3953]];
-const TOTAL=16196;
-$("#fillbars").innerHTML=FILL.map(([l,v])=>{const p=v/TOTAL*100;return `<div class="bar"><span>${l}</span><div class="track"><div class="fill ${p<70?"low":""}" style="width:${p.toFixed(1)}%"></div><div class="target" style="left:85%"></div></div><span class="val">${Math.round(p)} %</span></div>`;}).join("");
-
-const PDR=[["Cheikh",1769],["Mazarine (partie)",324],["Simon",179],["Uthmânn (parti)",50],["Ivan",47],["Marcel",9],["Autres",6]];
-const pdrMax=1769;
-const pdrBars=`<div class="bars">${PDR.map(([l,v])=>`<div class="bar"><span>${l}</span><div class="track"><div class="fill" style="width:${(v/pdrMax*100).toFixed(1)}%"></div></div><span class="val">${v.toLocaleString("fr-FR")}</span></div>`).join("")}</div><p class="chartnote">Contacts en « Pas de réponse » par propriétaire, au 14 octobre 2026.</p>`;
-const dealStack=`<div class="stack" role="img" aria-label="75 deals ouverts : 50 sans date, 20 date dépassée, 5 valides"><div style="width:66.7%;background:var(--accent)">50</div><div style="width:26.7%;background:var(--t-corriger)">20</div><div style="width:6.6%;background:var(--t-garder)">5</div></div><div class="keys"><span><i style="background:var(--accent)"></i>sans date de fermeture</span><span><i style="background:var(--t-corriger)"></i>date dépassée</span><span><i style="background:var(--t-garder)"></i>valides</span></div><p class="chartnote">Les 75 deals ouverts au 14 octobre 2026, propriété « Date de fermeture ».</p>`;
-const ownerStack=`<div class="stack" role="img" aria-label="2 993 contacts sans propriétaire actif : 1 417 sans propriétaire, 1 576 chez d'anciens collaborateurs"><div style="width:47.3%;background:var(--accent)">1 417</div><div style="width:52.7%;background:var(--blue)">1 576</div></div><div class="keys"><span><i style="background:var(--accent)"></i>sans propriétaire</span><span><i style="background:var(--blue)"></i>Mazarine 878, Uthmânn 659, Thiago 39</span></div>`;
-
-const CONSTATS=[
- {n:"1",t:"La base dort",p:"Seuls 3 608 contacts sur 16 196 ont eu un échange depuis six mois. 2 384 contacts restent en « Pas de réponse », un statut sans date de fin. La plupart viennent d'une seule vague de relance, en janvier 2025 : 4 620 anciens leads, surtout Google Ads et SEO, inscrits d'un coup à la même séquence. Résultat : 18 gagnés, 1 452 restés sans réponse.",why:"Aucune règle ne fait sortir un contact de « Pas de réponse », et 42 % de la base vient d'imports jamais retravaillés.",sales:"Tes vues sont encombrées de contacts morts. Le nouveau funnel les sort de la base active et les recycle dans une réactivation par trimestre.",viz:pdrBars},
- {n:"2",t:"On ne peut pas cibler",p:"Le poste n'est rempli que sur 35 % des contacts, la qualité du lead sur 24 %, le secteur sur 62 %. Résultat : 405 k€ gagnés en 2026 n'ont pas de secteur, et on ne peut pas construire de séquence par secteur.",why:"Rien n'exige ces champs au bon moment, et le secteur porté par le contact n'est pas vérifié quand on crée un deal.",sales:"On te demandera de compléter secteur, poste et qualité du lead pendant le premier échange. En échange : des séquences par secteur, et une qualité du lead préremplie par le scoring."},
- {n:"3",t:"Le pipeline n'est plus fiable",p:"70 des 75 deals ouverts n'ont pas de date de fermeture valide. 1 462 tâches ont plus de 7 jours de retard, dont 1 396 de plus de 30 jours. Parmi ces dernières : 881 créées en masse à la main (« appel … », « call … »), environ 365 par des workflows et 101 par Lemlist. Plus de 1 100 sont chez Marcel.",why:"Les deux workflows qui créent un deal au RDV ne posent ni date ni montant. Les tâches créées en masse ou par workflow n'ont pas de vraie échéance, et personne ne fait le ménage.",sales:"Une revue de 30 minutes de tes deals ouverts, puis une date de fermeture et un montant à tenir à jour. Les tâches obsolètes seront clôturées en masse.",viz:dealStack},
- {n:"4",t:"Des contacts sans responsable",p:"2 993 contacts n'ont pas de propriétaire actif : 1 417 n'en ont aucun, 1 576 sont encore rattachés à Mazarine, Uthmânn ou Thiago.",why:"Rien ne réattribue les contacts quand quelqu'un part, et le lien de RDV tourne encore sur un ancien commercial.",sales:"Tu vas récupérer des contacts de tes secteurs. Le monitoring te les signalera par lots, en commençant par ceux qui sont encore ouverts.",viz:ownerStack},
- {n:"5",t:"Le marketing est à l'arrêt",p:"623 contacts seulement peuvent recevoir un email marketing, et aucun envoi n'est parti depuis juillet 2025. Pourtant, les clients existants font 35 % du CA gagné, avec 86 % de taux de gain.",why:"Un workflow bascule en non marketing tout contact qui n'a pas gagné, y compris chaque lead inbound à son arrivée. Les parcours de nurturing sont désactivés.",sales:"Les clients recevront de nouveau une newsletter, et une relance après chaque campagne pourra déclencher la suivante."},
- {n:"6",t:"Des automatisations créent le désordre",p:"145 anciens clients sont bloqués en cycle de vie « Other ». Des entreprises sont créées en double (McDonald's, Burger King). Des sources « Outbound » sont écrasées par des sources web.",why:"Sur 75 workflows, plusieurs se contredisent : le premier deal perdu passe un client en « Other », d'où HubSpot ne peut plus le faire revenir.",sales:"Rien à faire de ton côté : c'est la phase 1 du plan. Mais c'est pour ça qu'on refait le funnel avant de nettoyer : sinon la base se redégrade en quelques semaines."}
-];
-$("#constats").innerHTML=CONSTATS.map(c=>`<article class="constat"><div><div class="num">Constat ${c.n}</div><h3>${esc(c.t)}</h3><p>${esc(c.p)}</p><p class="why"><b>Pourquoi :</b> ${esc(c.why)}</p><div class="forsales"><b>Pour les commerciaux</b>${esc(c.sales)}</div></div><div>${c.viz||""}</div></article>`).join("");
-
-/* ---------- PLAN ---------- */
-const PHASES=[
- {n:0,cls:"now",chip:["now","En cours"],when:"Maintenant",t:"Cadrer",p:"Valider le funnel et trancher les questions, pour pouvoir tout expliquer aux commerciaux avant de toucher à HubSpot.",acts:[
-  ["Valider le nouveau funnel","Ivan","Parcours, statuts et workflows de l'onglet Nouveau funnel."],
-  ["Trancher les questions ouvertes","Ivan, avec les commerciaux pour les n°7 à 10","",""],
-  ["Présenter le projet aux commerciaux","Ivan","30 minutes avec ce site.",12],
-  ["Faire un export de sauvegarde de tous les contacts","Ivan","Avant toute modification."]]},
- {n:1,cls:"",chip:["next","À venir"],when:"Semaine 1",t:"Arrêter la dégradation",p:"Corriger les workflows qui abîment la base, environ 3 heures dans HubSpot. Claude prépare une fiche pas à pas par action, puis vérifie.",acts:[
-  ["Cycle de vie : un client reste Client","Ivan","Ajouter « aucun deal gagné » aux 4 workflows qui passent en « Other ». En premier."],
-  ["Créer le statut « Sans réponse, à appeler » et la tâche d'appel de fin de séquence","Ivan",""],
-  ["Deals créés au RDV : date de fermeture, nom = entreprise, un seul deal par RDV","Ivan",""],
-  ["Pipeline : montant obligatoire au devis, motif de perte obligatoire","Ivan",""],
-  ["Brancher les séquences Facebook Ads et Démo aux workflows de statut","Ivan","Aujourd'hui seules GA et SEO posent En attente et En cours."],
-  ["Créer la propriété « Canal » sur le deal, remplie automatiquement depuis le contact","Ivan, fiche pas à pas Claude","Canal déduit de la source d'acquisition du contact (Inbound, Outbound, Réseau, Appel d'offres, Client), recopié sur le deal à sa création, modifiable à la main."],
-  ["Un seul deal par prospect : pas de nouveau deal si un deal est déjà ouvert","Ivan","Concerne les workflows « RDV pris » (appel) et « 1er RDV découverte » (lien)."],
-  ["Sources écrites seulement si vides, entreprises créées par nom seulement pour les emails personnels","Ivan",""],
-  ["Inbound gardé en marketing 90 jours, lien de RDV mis à jour","Ivan","",3],
-  ["Désactiver la fermeture automatique à 55 jours, créer la fermeture après 90 jours bloqué, couper l'ancien score MQL","Ivan","Le commercial passe lui-même ses deals en Fermé perdu."],
-  ["Attribuer les leads inbound par rotation dès le formulaire","Ivan","Entre Cheikh, Simon et Marcel ; le RDV pris réattribue au commercial réservé."],
-  ["Échéance J+3 sur la tâche « Rappeler », tâche repeat sur les deals gagnés","Ivan",""],
-  ["« Pas intéressé » : garder le contact en base, tâche de rappel à 3 mois (décalable jusqu'à 6)","Ivan","Sans email : fin du suivi. Avec email : entrée dans le nurturing (phase 5).",17]]},
- {n:2,cls:"",chip:["next","À venir"],when:"Semaine 2",t:"Nettoyer",p:"Remettre la base d'aplomb, une fois que plus rien ne la redégrade.",acts:[
-  ["Clôturer en masse les tâches en retard de plus de 30 jours (1 396)","Ivan","Créées en masse à la main, par des workflows ou par Lemlist. Les 123 tâches « Appel, à rappeler » partent aussi, même récentes."],
-  ["Remettre en Client les 145 anciens clients bloqués","Ivan, liste Claude","Seulement après la correction du cycle de vie."],
-  ["Rattraper le secteur des orphelins, puis les réattribuer par secteur","Claude propose, Ivan valide","Hors contacts à supprimer. Avant le nettoyage.",7],
-  ["Revue des 75 deals ouverts : date de fermeture, montant, prochaine action","Chaque commercial","30 minutes."],
-  ["Liste nominative des contacts à supprimer (environ 1 916), à valider par Ivan","Claude","Fichier avec le critère de chaque contact : jamais contacté depuis 3 mois, ou sans email ou en hard bounce sans échange depuis 12 mois, sans deal ni statut client."],
-  ["Supprimer les contacts validés, après export","Ivan",""],
-  ["Sortir les « Pas de réponse » de plus de 90 jours de la base active","Ivan","",1]]},
- {n:3,cls:"",chip:["next","À venir"],when:"Semaines 3 et 4",t:"Fiabiliser",p:"Compléter ce qui manque, par lots validés.",acts:[
-  ["Rattraper le secteur des contacts des deals 2026 (405 k€)","Claude propose, Ivan valide","Recopie d'un collègue de la même entreprise, déduction évidente, puis liste courte pour les commerciaux."],
-  ["Rattraper le secteur sur le reste de la base active","Claude propose, Ivan valide",""],
-  ["Normaliser les téléphones et vider les numéros factices","Claude propose, Ivan valide",""],
-  ["Créer la vue « À qualifier » de chaque commercial","Ivan",""],
-  ["Kit de séquences HubSpot : un modèle par verticale, séquence d'un seul email possible, règle de nommage","Ivan et commerciaux, Claude prépare les modèles","15 minutes de prise en main en réunion commerciale."],
-  ["Premier rapport de suivi","Claude","",11]]},
- {n:4,cls:"",chip:["next","À venir"],when:"Mois 2",t:"Piloter",p:"Des tableaux de bord qui montrent aussi la santé de la base.",acts:[
-  ["Tableaux Direction, Commercial (un par commercial), Santé CRM et Marketing","Ivan, liste Claude",""],
-  ["Archiver les copies annuelles, les rapports en double et les 24 workflows non publiés","Ivan",""]]},
- {n:5,cls:"",chip:["next","À venir"],when:"Trimestre",t:"Relancer",p:"Remettre la base au travail.",acts:[
-  ["Trier les contacts marketing : 1 500 au maximum","Claude, puis Ivan le 1er du mois","Clients, puis inbound de moins de 90 jours, puis « Pas intéressé » en nurturing, puis segments."],
-  ["Newsletter clients","Ivan et Claude",""],
-  ["Nurturing des « Pas intéressé » avec un email (763 aujourd'hui) : newsletter et contenus de leur verticale","Ivan et Claude","Ils entrent dans les contacts marketing après les clients et l'inbound récent, dans la limite des 1 500. Les plus récents et les secteurs A d'abord si la place manque.",17],
-  ["Vague 1 de réactivation : 50 à 70 contacts par commercial","Claude prépare la liste, les commerciaux appellent","Secteurs A et Île-de-France d'abord, séquence HubSpot de 2 emails et 1 appel.",15],
-  ["Scoring v1 dans le rapport pendant deux passages, puis dans HubSpot","Claude, puis Ivan",""]]}
-];
-$("#phases").innerHTML=PHASES.map(ph=>`<div class="phase ${ph.cls}"><div class="ph-when"><div class="ph-num">${ph.n}</div><span>${esc(ph.when)}</span></div><div class="ph-body"><h3>${esc(ph.t)}<span class="chip ${ph.chip[0]}">${ph.chip[1]}</span></h3><p>${esc(ph.p)}</p><ul class="acts">${ph.acts.map(a=>`<li><span>${esc(a[0])}</span><span class="who">${esc(a[1])}</span>${a[2]?`<small>${esc(a[2])}</small>`:""}${a[3]?`<span class="q">${qbtn(a[3])}</span>`:""}</li>`).join("")}</ul></div></div>`).join("");
-
-/* ---------- FUNNEL DATA ---------- */
-const N=[
- // colonne 0 : entrées
- {id:"ga",c:0,r:"m",y:0,kind:"entree",k:"Entrée",t:"Google Ads",s:"Landing page et formulaire Typeform GA",d:"Le visiteur arrive sur une landing page, remplit le formulaire Typeform GA et voit la page Merci.",wf:[["Workflow de source « Google Ads »","corriger","N'écrire la source que si elle est vide, et retirer le formulaire SEO de ses critères."]]},
- {id:"seo",c:0,r:"m",y:96,kind:"entree",k:"Entrée",t:"SEO",s:"Site et formulaire Typeform SEO",d:"Le visiteur arrive par le site, remplit le formulaire Typeform SEO et voit la page Merci SEO.",wf:[["Workflow de source « SEO »","corriger","N'écrire la source que si elle est vide."]]},
- {id:"fb",c:0,r:"m",y:192,kind:"entree",k:"Entrée inbound",t:"Facebook Ads",s:"Formulaire Typeform Facebook Ads",d:"Le lead remplit le Typeform Facebook Ads, puis entre dans la « Séquence d'arrivée FB ADS ».",wf:[["Workflow de source « Facebook Ads »","corriger","N'écrire la source que si elle est vide."]]},
- {id:"demo",c:0,r:"m",y:240,kind:"entree",k:"Entrée inbound",t:"Démo",s:"Formulaire Typeform Démo Simulation",d:"Le lead remplit le Typeform de démo, puis entre dans la « Séquence d'arrivée Demo ».",wf:[["Workflow de source « Démo Simulation »","corriger","N'écrire la source que si elle est vide."]]},
- {id:"out",c:0,r:"m",y:300,kind:"entree",k:"Entrée outbound",t:"Liste par verticale",s:"Sales Navigator, Lemlist, puis import CSV",d:"Le commercial construit sa liste dans Sales Navigator, l'enrichit dans Lemlist, puis l'importe dans HubSpot. Source « Outbound - nom » et propriétaire posés à l'import.",who:"Commercial",st:"À démarcher",wf:[["Import : source et propriétaire renseignés","corriger","Contrôlés par le monitoring : un import sans source ni propriétaire est signalé."]]},
- {id:"reco",c:0,r:"m",y:470,kind:"entree",k:"Entrée",t:"Recommandation",s:"Bouche à oreille, partenaire, collègue d'un client",d:"Bouche à oreille, partenaire, collègue d'un client. Fiche saisie à la main avec la source et le propriétaire.",who:"Commercial",st:"En cours"},
- {id:"ao",c:0,r:"m",y:570,kind:"entree",k:"Entrée",t:"Appel d'offres gagné",s:"Deal créé directement, en Fermé gagné",d:"Le suivi des réponses aux appels d'offres (dépôts, BPU) se fait en dehors de HubSpot. Un deal n'est créé que si l'appel d'offres est gagné, directement en Fermé gagné, avec la source « Appel d'offre ».",who:"Commercial"},
- {id:"cli",c:0,r:"m",y:670,kind:"entree",k:"Entrée",t:"Client existant",s:"Nouvelle demande d'un client",d:"Le deal est créé directement, sans repasser par la qualification.",who:"Propriétaire du client",outs:[["Nouveau deal","Transaction ouverte"]]},
- // colonne 1 : arrivée
- {id:"arr",c:1,r:"m",y:20,kind:"etape",k:"Automatique",t:"Séquence d'arrivée",s:"3 emails depuis la boîte de Cheikh, avec le lien de RDV",st:"En attente",d:"Chaque Typeform inscrit le contact dans sa séquence d'arrivée (GA, SEO, Facebook Ads, Démo) : 3 emails envoyés depuis la boîte de Cheikh, avec le lien de prise de RDV qui tourne entre Cheikh, Marcel et Simon. L'entreprise est associée par le domaine de l'email.",wf:[["Inscription → En attente","corriger","Aujourd'hui branché sur GA et SEO seulement : ajouter Facebook Ads et Démo."],["Contact marketing → non marketing","corriger","Ne plus basculer l'inbound à l'arrivée : il reste marketing 90 jours."],["Création d'entreprise par nom","corriger","Seulement pour les emails personnels, sinon doublons."],["Lien « Prise de RDV Inbound - 2K24 »","corriger","Vérifier qu'il tourne bien entre Cheikh, Marcel et Simon, et qu'il attribue le contact au commercial réservé."],["Attribution par rotation dès le formulaire","creer","Entre Cheikh, Simon et Marcel. Le RDV pris réattribue au commercial réservé."],["Expéditeur des emails d'arrivée","garder","Boîte de Cheikh au démarrage, à revoir plus tard."]]},
- {id:"hors",c:1,r:"m",y:210,kind:"etape",k:"Commercial",t:"Autres demandes entrantes",s:"Salon, téléphone, email : prises en main sous 48 h",st:"Lead non traité",d:"Les demandes qui n'arrivent pas par un Typeform (salon, appel, email direct) passent automatiquement en « Lead non traité » à leur création. Le monitoring signale celles qui n'ont pas d'activité sous 48 h.",who:"Commercial qui reçoit la demande"},
- {id:"prosp",c:1,r:"m",y:320,kind:"etape",k:"Commercial",t:"Prospection par verticale",s:"Surtout des appels depuis HubSpot, quelques emails",st:"À démarcher",d:"Le commercial appelle depuis HubSpot et enregistre le résultat de chaque appel. Les quelques emails partent aujourd'hui de Lemlist. Demain, chaque commercial pourra créer sa propre séquence dans HubSpot, même d'un seul email, à partir de modèles par verticale. Les séquences ne comptent pas dans les contacts marketing.",who:"Commercial",wf:[["Kit de séquences HubSpot par verticale","creer","Modèles prêts à copier, séquence d'un seul email possible, règle de nommage."],["Lemlist : séquences multicanal (email + LinkedIn)","garder","Reste l'outil du multicanal, surtout pour les contacts sans email. Réponses et activités synchronisées dans HubSpot, tâches avec une vraie échéance."]]},
- {id:"callres",c:2,r:"m",y:320,kind:"etape",k:"Automatique",t:"Résultat d'appel",s:"Chaque résultat pose un statut",d:"Le commercial choisit le résultat de l'appel dans HubSpot. Un workflow pose le statut et, si besoin, crée le deal ou la tâche de rappel.",outs:[["Rendez-vous pris","En cours + deal"],["Connecté, à rappeler","En attente + tâche J+3"],["Aucune réponse","À démarcher + tâche"],["Mauvais numéro, pas le bon interlocuteur","Non qualifié"],["Pas intéressé","Pas intéressé, nurturing et rappel à 3 mois"]],wf:[["« 2026 - Appel - 1er RDV Pris »","corriger","Date de fermeture, nom = entreprise, et pas de second deal si un deal est déjà ouvert (aujourd'hui, chaque appel « RDV pris » en recrée un)."],["« Appel - À rappeler - En attente + Tâche de rappel »","corriger","Échéance à J+3 par défaut, le commercial la décale à la date convenue. Les 123 tâches ouvertes sont obsolètes : clôture en masse."],["« Appel - Aucune réponse - À démarcher + Tâche »","garder"],["« Appel - Mauvais numéro ou Pas le bon interlocuteur »","garder"],["« Appel - Pas intéressé »","garder"]]},
- // colonne 2 : premier contact
- {id:"rep",c:2,r:"m",y:0,kind:"etape",k:"Automatique",t:"Prend un RDV",s:"En cours et deal créé. Une simple réponse : En cours, sans deal",st:"En cours",d:"Le contact réserve un créneau avec le lien de RDV. Il passe En cours, le commercial du RDV devient son propriétaire, et un deal « 1er RDV découverte (Inbound) » est créé. S'il répond à un email sans prendre RDV, il passe aussi En cours, mais aucun deal n'est créé : le commercial reprend la main et lui propose un créneau.",wf:[["Désinscription de la séquence → En cours","corriger","Ajouter les séquences Facebook Ads et Démo. Une réponse à un email passe aussi en En cours, c'est voulu : seul le RDV crée le deal."],["Création deal « 1er RDV découverte Inbound »","corriger","Date de fermeture à J+30, nom = entreprise, et pas de deal si un deal est déjà ouvert (cas d'un prospect outbound qui réserve par le lien)."]]},
- {id:"sans",c:2,r:"m",y:200,kind:"etape",k:"Automatique",t:"Pas de RDV à la fin de la séquence",s:"« Sans réponse, à appeler » et tâche d'appel",st:"Sans réponse, à appeler",d:"Les 3 emails sont partis sans prise de RDV. Aujourd'hui, le contact repasse en « Lead non traité » sans aucune tâche : personne n'est prévenu. Demain, il passe en « Sans réponse, à appeler » et son propriétaire reçoit une tâche d'appel pour le lendemain.",wf:[["Fin de séquence → statut","corriger","Poser « Sans réponse, à appeler » au lieu de « Lead non traité », pour les 4 séquences."],["Valeur « Sans réponse, à appeler »","creer"],["Tâche d'appel à J+1","creer","N'existe pas aujourd'hui."]]},
- // colonne 3 : qualification
- {id:"dec",c:3,r:"m",y:230,kind:"etape",k:"Commercial",t:"Découverte et qualification",s:"Besoin, cible, décideur, budget, calendrier",st:"En cours",d:"Le commercial vérifie le besoin, la cible, le décideur, le budget et le calendrier. Il complète le secteur, le poste et le téléphone. La qualité du lead est préremplie par le score d'adéquation, il la corrige si besoin. Une vue « À qualifier » liste les oublis.",who:"Commercial",outs:[["Qualifié","Transaction ouverte"],["Hors cible ou sans besoin","Non qualifié"],["Refus","Pas intéressé"],["Injoignable, ou à rappeler plus tard","Pas de réponse"]],wf:[["Préremplissage de la qualité du lead par le scoring","creer","Après deux passages de calage dans le rapport."],["« MAJ automatique statut du lead »","corriger","Se baser sur la date de dernière activité."]]},
- // colonne 4 : pipeline
- {id:"to",c:4,r:"m",y:0,kind:"pipeline",k:"Pipeline",t:"Transaction ouverte",sla:"Signalé après 14 jours sans activité",s:"RDV découverte planifié",st:"Transaction ouverte",d:"Deal créé au RDV pris : par le lien de RDV (inbound), par le résultat d'appel (outbound), ou à la main. Le secteur est porté par le contact associé : le commercial le vérifie à la création du deal.",wf:[["Propriété « Canal » sur le deal","creer","Remplie automatiquement à partir du canal du contact (sa source d'acquisition), modifiable à la main. Évite les doublons dans le CA par canal."]]},
- {id:"r1",c:4,r:"m",y:130,kind:"pipeline",k:"Pipeline",t:"R1 fait",sla:"Signalé après 21 jours",s:"Premier RDV tenu, besoin compris",d:"Date de R1 demandée au passage d'étape.",wf:[]},
- {id:"r2",c:4,r:"m",y:240,kind:"pipeline",k:"Pipeline",t:"R2 fait",sla:"Signalé après 21 jours",s:"Zones, volumes, dispositif",d:"Date de R2 demandée au passage d'étape."},
- {id:"devis",c:4,r:"m",y:350,kind:"pipeline",k:"Pipeline",t:"Devis envoyé",sla:"Signalé après 30 jours",s:"Montant obligatoire",d:"Un devis chiffré est parti, avec son montant dans HubSpot. Pour un appel d'offres : la réponse est déposée.",wf:[["Montant obligatoire à « Devis envoyé »","creer","Réglage du pipeline."]]},
- {id:"won",c:4,r:"m",y:470,kind:"pipeline",k:"Pipeline",t:"Fermé gagné",s:"Le contact passe Client",st:"Fermé gagné",d:"Prestations saisies en lignes de produit, date de fin de campagne renseignée. Le cycle de vie passe à Client.",wf:[["Deal gagné → Client","garder"]]},
- {id:"lost",c:4,r:"m",y:600,kind:"pipeline",k:"Pipeline",t:"Fermé perdu",s:"Proposition faite, sans succès",st:"Fermé perdu",d:"Une proposition a été faite et n'a pas abouti. Le motif de perte est obligatoire.",wf:[["4 workflows qui passent en « Other »","corriger","Jamais pour un contact qui a déjà un deal gagné."],["Motif de perte obligatoire","creer","Réglage du pipeline."]]},
- {id:"auto55",c:4,r:"m",y:740,kind:"etape",k:"Automatique",t:"Deal bloqué 90 jours",s:"Seule fermeture automatique",d:"Le commercial passe lui-même ses deals en Fermé perdu, avec le motif. Seule exception : un deal resté 90 jours à la même étape sans activité est fermé automatiquement, avec le motif « Sans suite ». Le monitoring le signale bien avant, dès 14 à 30 jours selon l'étape.",wf:[["« Transaction en cours ⇒ Fermé perdu » (55 jours, 2 étapes)","couper","Désactivé : il contredit la règle."],["Fermeture après 90 jours bloqué à la même étape","creer","Motif de perte « Sans suite »."]]},
- // colonne 5 : client
- {id:"camp",c:5,r:"m",y:440,kind:"etape",k:"Commercial",t:"Campagne réalisée",s:"Suivi dans l'app FFY, rapport de fin de mission",d:"Le client suit sa campagne dans l'application FFY, puis reçoit le rapport de fin de mission. La date de fin de campagne doit être remplie sur le deal : les relances en dépendent.",who:"Commercial et production"},
- {id:"repeat",c:5,r:"m",y:570,kind:"etape",k:"Automatique",t:"Relance repeat",s:"1 mois après la fin de campagne",d:"Une tâche au propriétaire, 1 mois après la fin de campagne d'un deal gagné, pour proposer la suivante.",wf:[["Tâche repeat sur deal gagné","creer","1 mois après la date de fin de campagne."]]},
- {id:"news",c:5,r:"m",y:690,kind:"etape",k:"Marketing",t:"Newsletter clients",s:"Nouveautés de l'application et actualités FFY",d:"Les clients des 24 derniers mois sont prioritaires dans les contacts marketing. La newsletter annonce d'abord les nouveautés de l'application, et aussi les actualités FFY : cas clients, nouvelles offres.",wf:[["Envoi de la newsletter clients","creer","Préparée avec Ivan, envoyée quand tout est prêt."]]},
- {id:"coll",c:5,r:"m",y:810,kind:"etape",k:"Commercial",t:"Collègues du client",s:"Plusieurs contacts actifs = signal",st:"Collègue client",d:"Les autres contacts de l'entreprise cliente. Plusieurs contacts actifs dans une même entreprise sont un signal d'intérêt."},
- // recyclage
- {id:"supp",c:0,r:"r",y:0,kind:"recyclage",k:"Ivan, après export",t:"Suppression",s:"Contacts inutiles, sans deal ni client",d:"Jamais contactés depuis 3 mois, ou sans email ou en hard bounce sans échange depuis 12 mois. Uniquement sans deal ni statut client. Les contacts encore appelés restent."},
- {id:"react",c:1,r:"r",y:0,kind:"recyclage",k:"Commercial",t:"Réactivation trimestrielle",s:"50 à 70 contacts par commercial",d:"Chaque trimestre, Claude sort une liste priorisée du vivier (secteurs A et Île-de-France d'abord). Chaque commercial en reprend 50 à 70 avec une séquence HubSpot courte de sa verticale : 2 emails et 1 appel. Un contact qui prend RDV revient en étape 3.",outs:[["Prend RDV ou répond","En cours, retour en étape 3"],["Pas de réponse","Reste au vivier, nouvelle tentative au trimestre suivant"],["Deux vagues sans réponse","Sort du vivier"]],wf:[["Règles du vivier de réactivation","creer","Principe validé : listes trimestrielles à préparer.",15]]},
- {id:"pdr",c:2,r:"r",y:0,kind:"recyclage",k:"Recyclage",t:"Pas de réponse",s:"2 384 contacts aujourd'hui",st:"Pas de réponse",d:"Injoignable ou à rappeler plus tard. Valeur interne « À relancer plus tard ». Il garde son statut ; après 90 jours sans échange, il sort de la base active et rejoint le vivier de réactivation.",wf:[["Sortie de la base active après 90 jours, entrée au vivier","creer"]]},
- {id:"nq",c:3,r:"r",y:0,kind:"recyclage",k:"Recyclage",t:"Non qualifié",s:"Fin du suivi, hors base active",st:"Non qualifié",d:"Hors cible ou sans besoin, mauvais numéro, pas le bon interlocuteur. Fin du suivi commercial : le contact sort de la base active."},
- {id:"pi",c:4,r:"r",y:0,kind:"recyclage",k:"Marketing et commercial",t:"Pas intéressé",s:"Gardé en base : nurturing et rappel",st:"Pas intéressé",d:"Refus explicite, mais le contact reste en base. S'il a un email, il passe en contact marketing et entre dans le nurturing : newsletter et contenus de sa verticale. Son propriétaire reçoit une tâche de rappel à 3 mois par défaut, qu'il peut décaler jusqu'à 6 mois. Sans email, fin du suivi. Aujourd'hui : 1 081 contacts, dont 763 avec un email (3 seulement en contact marketing).",outs:[["Avec un email","Nurturing et tâche de rappel à 3 mois"],["Sans email","Fin du suivi"],["Répond ou prend RDV","En cours, retour en étape 3"]],wf:[["Entrée en contact marketing et dans la liste de nurturing","creer","Uniquement avec un email valide, dans la limite des 1 500 contacts marketing : priorité après les clients et l'inbound récent."],["Tâche de rappel à 3 mois sur « Pas intéressé »","creer","Échéance décalable jusqu'à 6 mois par le commercial."]]},
- {id:"hb",c:3,r:"r",y:120,kind:"recyclage",k:"Recyclage",t:"Hard bounce, désinscrit",s:"Statut inchangé, retiré des emails",d:"Email invalide ou désinscription. Le statut ne change pas, car certains contacts restent travaillés par téléphone. Le contact est retiré des séquences et listes email.",wf:[["Retrait des séquences et listes email","creer"],["Vue « Email invalide » par commercial et ligne dans le rapport","creer","Pas de tâche automatique, pour ne pas surcharger les commerciaux."]]},
- {id:"relp",c:5,r:"r",y:0,kind:"recyclage",k:"Automatique",t:"Relance d'un deal perdu",s:"1 mois après la campagne prévue",d:"Une tâche 1 mois après la date de fin de campagne prévue, pour revenir vers le prospect.",wf:[["« 2026 - Tâche de relance 1 mois après la date de campagne »","corriger","Exiger une date de fin de campagne, sinon la tâche part tout de suite."]]},
-];
-const E=[["ga","arr"],["seo","arr"],["inb","hors"],["out","seqout"],["reco","dec"],["ao","dec"],
- ["arr","rep","RDV ou réponse"],["arr","sans","sans réponse"],["hors","rep","pris en main"],["seqout","rep","réponse"],["seqout","pdr","sans réponse"],
- ["rep","dec"],["sans","dec","joint"],["sans","pdr","injoignable"],
- ["dec","to","qualifié"],["dec","nq","hors cible"],["dec","pi","refus"],["dec","pdr","injoignable"],
- ["to","r1"],["r1","r2"],["r2","devis"],["devis","won"],["devis","lost","","side"],
- ["won","camp"],["camp","repeat"],["camp","news","","side"],["repeat","to","nouvelle demande","loop"],
- ["lost","relp"],["pdr","react","après 90 j ?","loop"],["react","dec","réponse","loop"]];
-const COLS=["Entrées","Arrivée","Premier contact","Qualification","Vente","Client"];
-const TRANSVERSE_WF=[["Réattribution des contacts d'un collaborateur parti","creer","Transverse"],["« Score HubSpot → Passage en MQL »","couper","Transverse"],["24 workflows non publiés et ceux des anciens pipelines","couper","Transverse"]];
-
-/* ---------- FUNNEL (vue en 5 étapes) ---------- */
-const byId={};N.forEach(n=>byId[n.id]=n);
-function dotsHtml(wf){
-  if(!wf||!wf.length)return"";
-  const c={};wf.forEach(w=>c[w[1]]=(c[w[1]]||0)+1);
-  return `<div class="dots">${Object.keys(TAGS).filter(k=>c[k]).map(k=>`<span title="${TAGS[k]}"><i class="d-${k}"></i>${c[k]}</span>`).join("")}</div>`;
+/* ---------- Lecture des fichiers ---------- */
+function parseDelimited(text){
+  text=text.replace(/^﻿/,"");
+  const firstLine=text.split(/\r?\n/).find(l=>l.trim())||"";
+  let delim=",",best=-1;
+  for(const d of ["\t",";",",","|"]){
+    let n=0,q=false;
+    for(const c of firstLine){if(c==='"')q=!q;else if(c===d&&!q)n++}
+    if(n>best){best=n;delim=d}
+  }
+  const rows=[];let row=[],cur="",q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}
+    else if(c==='"'&&cur==="")q=true;
+    else if(c===delim){row.push(cur);cur=""}
+    else if(c==="\n"){row.push(cur);rows.push(row);row=[];cur=""}
+    else if(c!=="\r")cur+=c;
+  }
+  row.push(cur);rows.push(row);
+  return rows;
 }
-const STG=[
- {n:3,name:"RDV découverte et qualification",now:"777 contacts en cours · qualité du lead remplie sur 24 %",what:["Même RDV pour tout le monde, qu'il vienne de l'inbound ou de l'outbound.","Besoin, cible, décideur, budget, calendrier.","Le commercial complète secteur, poste et téléphone. La qualité du lead est préremplie par le scoring."],st:["En cours"],who:"Commercial",subs:["dec"],exits:[["Hors cible ou sans besoin","Non qualifié"],["Refus","Pas intéressé"],["Injoignable","Pas de réponse"]]},
- {n:4,name:"Vente",now:"75 deals ouverts",chip:["cli","Client existant ou appel d'offres gagné : deal direct"],pipe:[["Transaction ouverte","14 j"],["R1 fait","21 j"],["R2 fait","21 j"],["Devis envoyé","30 j"],["Fermé gagné",""]],st:["Transaction ouverte"],who:"Commercial. Un deal est signalé après le délai indiqué sans activité.",subs:["to","r1","r2","devis","won","lost","auto55"],exits:[["Proposition refusée ou sans suite","Fermé perdu"]]},
- {n:5,name:"Client",cls:"client",now:"467 clients",what:["Campagne suivie dans l'app FFY, puis rapport de fin de mission.","Relance repeat 1 mois après la campagne.","Newsletter clients."],st:["Fermé gagné","Collègue client"],who:"Commercial et production",subs:["camp","repeat","news","coll"],exits:[["Nouvelle campagne","retour à l'étape 4","loop"]]}
-];
-const RECY=[["pdr","2 384"],["pi","1 081"],["nq","1 794"],["relp","2 158"],["hb",""],["react",""],["supp","≈ 1 916"]];
-function nodeWf(ids){return ids.flatMap(id=>byId[id].wf||[]);}
-function qBadge(wf){const qs=[...new Set(wf.filter(w=>w[3]).map(w=>w[3]))];return qs.length?`<span class="qb2">${qs.length===1?"question "+qs[0]:qs.length+" questions"}</span>`:"";}
-function lstep(id,kicker,cls){const n=byId[id];return `<button type="button" class="lstep ${cls||""}" data-node="${id}">${qBadge(n.wf||[])}<span class="k">${esc(kicker)}</span><span class="t">${esc(n.t)}</span><span class="s">${esc(n.s)}</span>${n.st?`<span><span class="pill">${esc(n.st)}</span></span>`:""}${dotsHtml(n.wf)}</button>`;}
-const DOWN=`<div class="down" aria-hidden="true"></div>`;
-function renderFlow(){
-  const cr=byId.callres;
-  const inbound=`<section class="lane in" aria-label="Couloir inbound">
-    <div class="lane-head"><span class="lane-tag">Inbound</span><h3>Le lead vient à nous</h3><p>Il remplit un formulaire Typeform, une séquence d'arrivée part toute seule, et on l'appelle s'il ne prend pas RDV.</p><div class="sc-now">Aujourd'hui : 169 en attente, 180 non traités</div></div>
-    <div class="lrow"><div class="rowlbl">Entrent ici</div><div class="chips">${["ga","seo","fb","demo"].map(id=>`<button type="button" class="entry" data-node="${id}">${esc(byId[id].t)}</button>`).join("")}</div></div>
-    ${DOWN}${lstep("arr","Étape 1 · Arrivée")}${DOWN}
-    <div class="split">${lstep("rep","Étape 2 · S'il prend RDV","ok")}${lstep("sans","Étape 2 · S'il ne prend pas RDV","ko")}</div>
-    <button type="button" class="lnote" data-node="hors"><b>Autres demandes</b> (salon, téléphone, email) : passent automatiquement en « Lead non traité », prises en main sous 48 h.</button>
-  </section>`;
-  const outbound=`<section class="lane out" aria-label="Couloir outbound">
-    <div class="lane-head"><span class="lane-tag">Outbound</span><h3>On va chercher le prospect</h3><p>Le commercial cible une verticale, importe sa liste et appelle. Chaque résultat d'appel pose le bon statut.</p><div class="sc-now">Aujourd'hui : 621 à démarcher</div></div>
-    <div class="lrow"><div class="rowlbl">Entrent ici</div><div class="chips"><button type="button" class="entry out" data-node="out">${esc(byId.out.t)} : ${esc(byId.out.s)}</button></div></div>
-    ${DOWN}${lstep("prosp","Étape 1 · Prospection")}${DOWN}
-    <button type="button" class="lstep" data-node="callres">${qBadge(cr.wf)}<span class="k">Étape 2 · Résultat d'appel</span><span class="t">${esc(cr.t)}</span><ul class="outcomes">${cr.outs.map(([a,b],i)=>`<li class="${i===0?"win":""}"><span>${esc(a)}</span><span class="pill">${esc(b)}</span></li>`).join("")}</ul>${dotsHtml(cr.wf)}</button>
-  </section>`;
-  const merge=`<div class="merge"><div class="merge-arrows" aria-hidden="true"><i></i><i></i></div><p><b>Les deux couloirs se rejoignent au premier RDV.</b> Entrent aussi ici :</p><div class="chips"><button type="button" class="entry" data-node="reco">Recommandation</button><button type="button" class="entry back" data-node="react">Réactivation</button></div></div>`;
-  const flow3=`<div class="flow3">${STG.map(s=>{
-    const wf=nodeWf(s.subs);
-    const body=s.pipe?`<ul class="pipe">${s.pipe.map(([a,b],i)=>`<li class="${i===s.pipe.length-1?"won":""}">${esc(a)}${b?`<span>${b}</span>`:""}</li>`).join("")}</ul>`:`<ul class="sc-what">${s.what.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`;
-    const card=`<button type="button" class="stagecard ${s.cls||""}" data-stage="${s.n}">${qBadge(wf)}<div class="sc-head"><span class="sc-num">${s.n}</span><span class="sc-name">${esc(s.name)}</span></div><div class="sc-now">Aujourd'hui : ${esc(s.now)}</div>${s.chip?`<span class="entry cli mini">${esc(s.chip[1])}</span>`:""}${body}<div><div class="sc-lbl">Statuts</div><div class="sc-sts">${s.st.map(x=>`<span class="pill">${esc(x)}</span>`).join("")}</div></div><div><div class="sc-lbl">Qui</div><div class="sc-who">${esc(s.who)}</div></div><div class="sc-foot">${dotsHtml(wf)||"<span></span>"}<span class="more">Détail →</span></div></button>`;
-    const ex=`<div class="exits">${s.exits.length?`<div class="rowlbl">Sortent vers</div>`:""}${s.exits.map(([a,b,c])=>`<div class="exit ${c||""}"><span>${esc(a)} : <b>${esc(b)}</b></span></div>`).join("")}</div>`;
-    return `<div class="fcol">${card}${ex}</div>`;}).join("")}</div>`;
-  $("#flow").innerHTML=`<div class="lanes">${inbound}${outbound}</div>${merge}${flow3}`;
-  $("#recy").innerHTML=`<h3>Ceux qui sortent du parcours</h3><p>Ils ne sont pas perdus : chacun a une suite prévue, et la réactivation trimestrielle les ramène en étape 3. Chiffres du 14 octobre 2026.</p><div class="rcards">${RECY.map(([id,num])=>{const n=byId[id];return `<button type="button" class="rcard ${id==="react"?"react":""}" data-node="${id}">${qBadge(n.wf||[])}<span class="t">${esc(n.t)}</span>${num?`<span class="n">${num}</span>`:""}<span class="s">${esc(n.s)}</span>${id==="react"?`<span class="back">↑ retour à l'étape 3</span>`:""}${dotsHtml(n.wf)}</button>`;}).join("")}</div>
-  <div class="reacti"><h4>Comment marche la réactivation</h4><div class="reacti-grid">
-   <div><b>Qui entre au vivier</b><ul><li>« Pas de réponse » sans échange depuis 90 jours</li><li>« Fermé perdu » depuis 6 mois, après la relance post-campagne</li><li>« En cours » sans activité depuis 6 mois</li><li>Tout lead ouvert sans échange depuis 12 mois</li></ul></div>
-   <div><b>Chaque trimestre</b><ul><li>Claude sort la liste priorisée par le scoring : secteurs A et Île-de-France d'abord</li><li>Chaque commercial en reprend 50 à 70</li><li>Séquence HubSpot courte de sa verticale : 2 emails et 1 appel</li></ul></div>
-   <div><b>Et après</b><ul><li>RDV ou réponse : retour en étape 3</li><li>Pas de réponse : il reste au vivier</li><li>Deux vagues sans réponse : il sort du vivier, et devient candidat à la suppression s'il n'a ni deal ni statut client</li></ul></div>
-  </div><button type="button" class="qlink" data-q="15">Principe validé : question n°15</button></div>`;
+function decode(buf){
+  try{return new TextDecoder("utf-8",{fatal:true}).decode(buf)}
+  catch(e){return new TextDecoder("windows-1252").decode(buf)}
 }
-function qBox(n){const q=QUESTIONS.find(x=>x.n===n);if(!q)return"";return `<div class="decbox"><b>Question n°${n} :</b> ${esc(q.t)}<ol>${q.opts.map(o=>`<li>${esc(o)}</li>`).join("")}</ol><b>Recommandation :</b> ${esc(q.reco)}<div style="margin-top:6px">${qbtn(n)}</div></div>`;}
-function subHtml(n,showTitle){
-  return `<div class="sub-step">${showTitle?`<h4>${esc(n.t)}<small>${esc(n.k)}</small></h4>`:""}${n.sla?`<div class="row"><b>Seuil</b><span>${esc(n.sla)}</span></div>`:""}<p>${esc(n.d)}</p>${n.who?`<div class="row"><b>Qui</b><span>${esc(n.who)}</span></div>`:""}${n.st?`<div class="row"><b>Statut</b><span class="pill">${esc(n.st)}</span></div>`:""}${n.outs?`<ul class="outs">${n.outs.map(([a,b])=>`<li><span>${esc(a)}</span><span class="pill">${esc(b)}</span></li>`).join("")}</ul>`:""}${n.wf&&n.wf.length?`<div class="wfl">${n.wf.map(([nm,k,why,q])=>`<div>${tag(k)}<span>${esc(nm)}</span>${why?`<small>${esc(why)}</small>`:""}${q?qBox(q):""}</div>`).join("")}</div>`:""}</div>`;
+function loadExcelLib(){
+  if(window.XLSX)return Promise.resolve();
+  return new Promise((ok,ko)=>{const s=document.createElement("script");s.src=EXCEL_LIB;s.onload=ok;s.onerror=ko;document.head.appendChild(s)});
 }
-let lastFocus=null;
-function openPanel(kicker,title,html,from){
-  lastFocus=from||null;
-  $("#dk").textContent=kicker;$("#dt").textContent=title;$("#dbody").innerHTML=html;$("#dbody").scrollTop=0;
-  const d=$("#detail");d.classList.add("open");d.setAttribute("aria-hidden","false");$("#dclose").focus({preventScroll:true});
+async function readFile(file){
+  showErr("");
+  try{
+    if(/\.xlsx?$/i.test(file.name)){
+      try{await loadExcelLib()}catch(e){showErr("Impossible de lire ce fichier Excel depuis cette page. Enregistre-le en CSV, puis dépose-le à nouveau.");return}
+      const wb=XLSX.read(await file.arrayBuffer(),{type:"array"});
+      const name=wb.SheetNames.find(n=>norm(n)==="import")||wb.SheetNames.find(n=>{const w=wb.Sheets[n];return w&&w["!ref"]&&norm(n)!=="mode d emploi"&&norm(n)!=="listes"&&norm(n)!=="export hubspot"})||wb.SheetNames[0];
+      load(XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:""}),file.name);
+    }else{
+      load(parseDelimited(decode(await file.arrayBuffer())),file.name);
+    }
+  }catch(e){showErr("Ce fichier n'a pas pu être lu. Vérifie qu'il s'agit bien d'un CSV ou d'un fichier Excel.")}
 }
-function closeDetail(){const d=$("#detail");if(!d.classList.contains("open"))return;d.classList.remove("open");d.setAttribute("aria-hidden","true");if(lastFocus)lastFocus.focus({preventScroll:true});}
-document.addEventListener("click",e=>{
-  const st=e.target.closest("[data-stage]");
-  if(st){const s=STG.find(x=>x.n===+st.dataset.stage);openPanel(`Étape ${s.n}`,s.name,s.subs.map(id=>subHtml(byId[id],true)).join(""),st);return;}
-  const nd=e.target.closest("[data-node]");
-  if(nd){const n=byId[nd.dataset.node];openPanel(n.r==="r"?"Recyclage":n.k,n.t,subHtml(n,false),nd);}
+function showErr(m){const e=$("#fileErr");e.textContent=m;e.hidden=!m}
+
+/* ---------- Reconnaissance des colonnes ---------- */
+function score(cell){
+  const n=norm(cell);if(!n)return null;
+  for(const f in SYN)if(SYN[f].includes(n))return f;
+  if(/\b(linkedin|url|photo|picture|domaine|domain|statut|status|verif|valid|bounce|chiffres|33|standard|company phone|company email)\b/.test(n))return null;
+  if(/\b(e ?mail|mail)\b/.test(n))return "email";
+  if(/\b(phone|telephone|mobile|portable)\b/.test(n))return "phone";
+  if(/\b(location|ville|city)\b/.test(n))return "city";
+  return null;
+}
+function detect(matrix){
+  matrix=matrix.map(r=>r.map(c=>c===null||c===undefined?"":String(c).trim())).filter(r=>r.some(c=>c!==""));
+  if(!matrix.length)return null;
+  let hi=-1;
+  for(let i=0;i<Math.min(10,matrix.length);i++){
+    if(matrix[i].filter(score).length>=2){hi=i;break}
+  }
+  const width=Math.max(...matrix.map(r=>r.length));
+  const col=i=>{let s="",n=i;do{s=String.fromCharCode(65+n%26)+s;n=Math.floor(n/26)-1}while(n>=0);return "Colonne "+s};
+  let header,data;
+  if(hi>=0){header=Array.from({length:width},(_,i)=>matrix[hi][i]||col(i));data=matrix.slice(hi+1)}
+  else{header=Array.from({length:width},(_,i)=>col(i));data=matrix}
+  const filled=i=>data.filter(r=>r[i]).length;
+  const map={},extra=[];
+  if(hi>=0){
+    const cand={};
+    matrix[hi].forEach((c,i)=>{const f=score(c);if(f)(cand[f]=cand[f]||[]).push(i)});
+    for(const f in cand){cand[f].sort((a,b)=>filled(b)-filled(a));map[f]=cand[f][0]}
+    if(cand.phone)extra.push(...cand.phone.slice(1));
+    if(map.last!==undefined&&map.first===undefined&&map.full===undefined){map.full=map.last;delete map.last}
+  }else{
+    const looks=(i,re)=>{const v=data.map(r=>r[i]).filter(Boolean);return v.length&&v.filter(x=>re.test(x)).length/v.length>.5};
+    const e=header.findIndex((_,i)=>looks(i,/@/));
+    if(e===2){["first","last","email","phone","company","job","sector","city"].forEach((f,i)=>{if(i<width)map[f]=i})}
+    else{
+      if(e>=0)map.email=e;
+      const p=header.findIndex((_,i)=>i!==e&&looks(i,/^[+\d][\d\s.()\-]{7,}$/));
+      if(p>=0)map.phone=p;
+    }
+  }
+  return {header,data,map,extra,hasHeader:hi>=0};
+}
+function load(matrix,name,sample=false){
+  const d=detect(matrix);
+  if(!d||!d.data.length){showErr("Ce fichier ne contient aucune ligne de contact.");return}
+  S.table=d.data;S.header=d.header;S.mapping=d.map;S.phoneExtra=d.extra;S.lineOffset=d.hasHeader?2:1;S.sample=sample;S.fileName=name;S.limit=200;
+  if(!sample){$("#sector").value=""}
+  build();
+  S.filter=sample?"all":(S.rows.some(r=>r._st==="error")?"error":"all");
+  renderAll();
+  const noContact=S.mapping.email===undefined&&S.mapping.phone===undefined;
+  $("#cols").open=!sample&&(noContact||!d.hasHeader||(S.mapping.first===undefined&&S.mapping.full===undefined));
+  if(!sample){
+    const dr=$("#drop");dr.classList.add("has");
+    $("#dropT").textContent=name;
+    $("#dropS").textContent=S.rows.length+" ligne"+(S.rows.length>1?"s":"")+" lue"+(S.rows.length>1?"s":"")+". Clique pour changer de fichier.";
+    if(noContact)showErr("Je n'ai reconnu ni la colonne email ni la colonne téléphone. Indique-les dans « Colonnes reconnues ».");
+    $("#saved").hidden=true;$("#fallback").hidden=true;$("#hs").classList.remove("done");
+  }
+}
+
+/* ---------- Mise au propre ---------- */
+function titleName(s){
+  s=String(s||"").trim().replace(/\s+/g," ");
+  if(!s)return "";
+  const hasLower=/\p{Ll}/u.test(s),hasUpper=/\p{Lu}/u.test(s);
+  return s.split(" ").map(w=>{
+    const letters=w.replace(/[^\p{L}]/gu,"");
+    const shout=letters.length>1&&letters===letters.toUpperCase();
+    if(!shout&&hasUpper&&hasLower)return w;
+    if(!shout&&hasUpper)return w;
+    return w.toLowerCase().replace(/(^|[-'’])(\p{L})/gu,(m,a,b)=>a+b.toUpperCase());
+  }).join(" ");
+}
+function cleanCity(v){
+  v=String(v||"").trim();if(!v)return "";
+  let c=v.split(",")[0].trim();
+  c=c.replace(/^Greater\s+/i,"").replace(/\s+(Metropolitan\s+(Area|Region)|Area)$/i,"").replace(/^Région\s+(de\s+|d['’]\s*)/i,"").replace(/\s+et périphérie$/i,"");
+  c=c.replace(/^St[.-]+\s*/i,"Saint-").replace(/^Ste[.-]+\s*/i,"Sainte-");
+  return REGIONS.has(norm(c))?"":c;
+}
+function normPhone(v){
+  const s=String(v??"").trim();if(!s)return {v:"",ok:true};
+  const d=s.replace(/[\s.\-()+]/g,"");
+  if(!/^\d+$/.test(d))return {v:s,ok:false};
+  if(d.length===10&&d[0]==="0")return {v:"+33"+d.slice(1),ok:true};
+  if(d.length===11&&d.startsWith("33"))return {v:"+"+d,ok:true};
+  if(d.length===12&&d.startsWith("330"))return {v:"+33"+d.slice(3),ok:true};
+  if(d.length===13&&d.startsWith("0033"))return {v:"+"+d.slice(2),ok:true};
+  if(d.length===9&&d[0]!=="0")return {v:"+33"+d,ok:true};
+  return {v:s,ok:false};
+}
+function companyFromDomain(dom){
+  const lab=dom.split(".")[0]||"";
+  if(lab.length<=3)return lab.toUpperCase();
+  return lab.split("-").map(p=>p.charAt(0).toUpperCase()+p.slice(1)).join(" ");
+}
+const emailOk=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
+const domainOf=e=>{const i=e.lastIndexOf("@");return i<0?"":e.slice(i+1).trim().toLowerCase()};
+
+function build(){
+  const m=S.mapping,get=(r,f)=>m[f]===undefined?"":String(r[m[f]]??"").trim();
+  S.rows=[];
+  S.table.forEach((r,i)=>{
+    let first=get(r,"first"),last=get(r,"last");
+    if(!first&&!last&&m.full!==undefined){const p=get(r,"full").split(/\s+/);first=p.shift()||"";last=p.join(" ")}
+    let phone=get(r,"phone");
+    if(!phone)for(const x of S.phoneExtra){if(String(r[x]??"").trim()){phone=String(r[x]).trim();break}}
+    const rawSec=get(r,"sector"),ns=norm(rawSec);
+    const email=get(r,"email").toLowerCase();
+    const company=get(r,"company"),job=get(r,"job"),city=cleanCity(get(r,"city"));
+    if(!(first||last||email||phone||company))return;
+    const pn=normPhone(phone);
+    S.rows.push({id:i,line:i+S.lineOffset,first:titleName(first),last:titleName(last),email,phone:pn.ok?pn.v:phone,companyOwn:company,job,city,
+      sectorFile:SECT_INDEX.get(ns)||"",sectorRaw:SECT_VIDES.has(ns)?"":rawSec,sectorManual:null,removed:false});
+  });
+  compute();
+}
+function compute(){
+  const glob=$("#sector").value;
+  const byDomain=new Map();
+  for(const r of S.rows){
+    if(r.removed||!r.companyOwn)continue;
+    const d=domainOf(r.email);if(!d||PERSO.has(d))continue;
+    if(!byDomain.has(d))byDomain.set(d,new Map());
+    const k=byDomain.get(d);k.set(r.companyOwn,(k.get(r.companyOwn)||0)+1);
+  }
+  const seenE=new Map(),seenP=new Map();
+  for(const r of S.rows){
+    r._msg=[];r._bad=new Set();
+    const pn=normPhone(r.phone);r._phone=pn.v;r._phoneOk=pn.ok;
+    const dom=domainOf(r.email),eOk=!r.email||emailOk(r.email);
+    r._dom=dom;
+    // Entreprise
+    r._guess=false;r._company=r.companyOwn;
+    if(!r.companyOwn&&dom&&eOk&&!PERSO.has(dom)){
+      const k=byDomain.get(dom);
+      if(k){r._company=[...k.entries()].sort((a,b)=>b[1]-a[1])[0][0];r._guess=k.size>1?"mix":"mate"}
+      else{r._company=companyFromDomain(dom);r._guess="domain"}
+    }
+    // Secteur
+    r._sector=r.sectorManual!==null?r.sectorManual:(glob||r.sectorFile);
+    const outList=!r._sector&&r.sectorRaw&&!r.sectorFile;
+    // Blocages
+    if(!r.email&&!r._phone){r._msg.push("Ni email ni téléphone");r._bad.add("email");r._bad.add("phone")}
+    if(r.email&&!eOk){r._msg.push("Email invalide");r._bad.add("email")}
+    if(!pn.ok){r._msg.push("Numéro à vérifier");r._bad.add("phone")}
+    if(outList){r._msg.push("Secteur « "+r.sectorRaw+" » hors liste");r._bad.add("sector")}
+    if(!r._company){r._msg.push(dom&&PERSO.has(dom)?"Entreprise à renseigner (adresse personnelle)":"Entreprise à renseigner");r._bad.add("company")}
+    r._st=r._msg.length?"error":"ok";
+    // Doublons
+    if(r.removed){r._st="removed";r._msg=[];continue}
+    if(r.email){
+      if(seenE.has(r.email)){r._st="dup";r._msg=["Même email que la ligne "+seenE.get(r.email)+" : ne sera pas exporté"];r._bad.clear();continue}
+      seenE.set(r.email,r.line);
+    }
+    if(r._st==="error")continue;
+    // Points à relire
+    const w=[];
+    if(r._phone){if(seenP.has(r._phone))w.push("Même téléphone que la ligne "+seenP.get(r._phone));else seenP.set(r._phone,r.line)}
+    if(r.email){
+      const loc=r.email.split("@")[0];
+      if(GENERIQUES.has(loc))w.push("Email générique");
+      else if(loc.length<=2)w.push("Email très court, à vérifier");
+    }else w.push("Sans email : risque de doublon à l'import");
+    if(r._guess==="domain")w.push("Entreprise déduite de l'email : à relire");
+    if(r._guess==="mix")w.push("Plusieurs entreprises pour ce domaine : à relire");
+    if(!r._sector)w.push("Secteur à compléter");
+    if(!r.job)w.push("Poste à compléter");
+    if(!r.first||!r.last)w.push("Prénom ou nom à compléter");
+    if(w.length){r._st="warn";r._msg=w}
+  }
+}
+const counts=()=>{const c={error:0,warn:0,ok:0,dup:0,removed:0};S.rows.forEach(r=>c[r._st]++);return c};
+const exportable=()=>S.rows.filter(r=>r._st==="ok"||r._st==="warn");
+
+/* ---------- Affichage ---------- */
+const LABEL={error:"À corriger",warn:"À relire",ok:"Prêt",dup:"Doublon",removed:"Retiré"};
+const SECTOR_OPTS='<option value="">À choisir</option>'+SECTEURS.map(([l])=>`<option value="${esc(l)}">${esc(l)}</option>`).join("");
+function statusCell(r){
+  const list=r._msg.length?"<ul>"+r._msg.map(m=>`<li>${esc(m)}</li>`).join("")+"</ul>":"";
+  return `<span class="ln">ligne ${r.line}</span><span class="pill">${LABEL[r._st]}</span>${list}`;
+}
+function rowHtml(r){
+  const inp=(f,v,lab,cls="")=>`<input id="c${r.id}-${f}" data-f="${f}" value="${esc(v)}" aria-label="${lab} ligne ${r.line}" class="${cls}" spellcheck="false" autocomplete="off">`;
+  return `<tr data-id="${r.id}" class="${r._st}">
+   <td class="st">${statusCell(r)}</td>
+   <td>${inp("first",r.first,"Prénom")}</td><td>${inp("last",r.last,"Nom")}</td>
+   <td>${inp("email",r.email,"Email")}</td><td>${inp("phone",r._phone,"Téléphone")}</td>
+   <td>${inp("company",r._company,"Entreprise")}</td><td>${inp("job",r.job,"Poste")}</td>
+   <td><select id="c${r.id}-sector" data-f="sector" aria-label="Secteur ligne ${r.line}">${SECTOR_OPTS}</select></td>
+   <td>${inp("city",r.city,"Ville")}</td>
+   <td><button class="linkbtn" type="button" data-act="toggle">${r.removed?"Remettre":"Retirer"}</button></td></tr>`;
+}
+function patchRow(tr,r){
+  tr.className=r._st;
+  tr.querySelector(".st").innerHTML=statusCell(r);
+  const q=f=>tr.querySelector(`[data-f="${f}"]`);
+  const comp=q("company"),ph=q("phone"),sec=q("sector");
+  if(document.activeElement!==comp)comp.value=r._company;
+  if(document.activeElement!==ph)ph.value=r._phone;
+  sec.value=r._sector;
+  comp.classList.toggle("guess",!r.companyOwn&&!!r._company);
+  for(const f of ["email","phone","company","sector"])q(f).classList.toggle("bad",r._bad.has(f));
+  tr.querySelector("[data-act]").textContent=r.removed?"Remettre":"Retirer";
+}
+function visible(){return S.filter==="all"?S.rows:S.rows.filter(r=>r._st===S.filter)}
+function renderTable(){
+  const v=visible(),body=$("#rows");
+  if(!v.length){body.innerHTML=`<tr><td class="empty" colspan="10">Aucun contact dans cette vue.</td></tr>`;$("#more").hidden=true;return}
+  body.innerHTML=v.slice(0,S.limit).map(rowHtml).join("");
+  body.querySelectorAll("tr[data-id]").forEach(tr=>patchRow(tr,S.byId.get(+tr.dataset.id)));
+  const rest=v.length-S.limit;
+  $("#more").hidden=rest<=0;
+  if(rest>0)$("#more").textContent=`Afficher les ${Math.min(rest,200)} suivants (${rest} restants)`;
+}
+function renderChips(){
+  const c=counts();
+  const items=[["all","Tous",S.rows.length,""],["error","À corriger",c.error,"error"],["warn","À relire",c.warn,"warn"],["ok","Prêts",c.ok,"ok"]];
+  if(c.dup)items.push(["dup","Doublons",c.dup,""]);
+  if(c.removed)items.push(["removed","Retirés",c.removed,""]);
+  if(S.filter!=="all"&&!items.some(i=>i[0]===S.filter))S.filter="all";
+  $("#chips").innerHTML=items.map(([k,l,n,cl])=>`<button type="button" class="chip ${cl}" data-k="${k}" aria-pressed="${S.filter===k}">${l} ${n}</button>`).join("");
+}
+function renderCols(){
+  const m=S.mapping;
+  const found=FIELDS.filter(([f])=>m[f]!==undefined);
+  $("#colsS").innerHTML=`Colonnes reconnues : ${found.length} <span>(${esc(found.map(([f,l])=>l).join(", ")||"aucune")}). Clique pour corriger.</span>`;
+  const sample=i=>{const r=S.table.find(x=>x[i]);return r?String(r[i]).slice(0,28):""};
+  const opts=S.header.map((h,i)=>{const s=sample(i);return [i,h+(s&&s!==h?" ("+s+")":"")]});
+  $("#colgrid").innerHTML=FIELDS.map(([f,l])=>`<label for="map-${f}">${l}<select id="map-${f}" data-map="${f}"><option value="">Aucune</option>${opts.map(([i,t])=>`<option value="${i}"${m[f]===i?" selected":""}>${esc(t)}</option>`).join("")}</select></label>`).join("");
+}
+function renderBar(){
+  const c=counts(),n=exportable().length,com=$("#commercial").value,btn=$("#dl");
+  const noSec=exportable().filter(r=>!r._sector).length,noTel=exportable().filter(r=>!r._phone).length;
+  let html="",ok=false;
+  if(S.sample)html="<span>Dépose ton fichier pour commencer.</span>";
+  else if(!n)html="<b>Aucun contact prêt.</b> <span>Corrige les lignes en rouge.</span>";
+  else{
+    html=`<b>${n} contact${n>1?"s":""} à importer</b>`;
+    const bits=[];
+    if(c.error)bits.push(`${c.error} en rouge laissé${c.error>1?"s":""} de côté`);
+    if(c.dup)bits.push(`${c.dup} doublon${c.dup>1?"s":""} ignoré${c.dup>1?"s":""}`);
+    if(noSec)bits.push(`${noSec} sans secteur`);
+    if(noTel)bits.push(`${noTel} sans téléphone`);
+    if(bits.length)html+=` <span>· ${bits.join(" · ")}</span>`;
+    if(!com)html+=` <br><span>Choisis ton prénom à l'étape 2 pour télécharger.</span>`;
+    ok=!!com;
+  }
+  $("#count").innerHTML=html;btn.disabled=!ok;
+  $("#fCom").classList.toggle("need",!S.sample&&!com);
+  const withSec=S.rows.filter(r=>r.sectorFile).length;
+  $("#secHelp").textContent=!S.sample&&withSec&&!$("#sector").value?`Ton fichier donne déjà un secteur pour ${withSec} contact${withSec>1?"s":""}. Choisis-en un ici pour les remplacer tous.`:"Choisis-le une fois : il s'applique à tous les contacts. Tu peux le changer sur une ligne.";
+}
+function index(){S.byId=new Map(S.rows.map(r=>[r.id,r]))}
+function renderAll(){index();renderChips();renderCols();renderTable();renderBar();$("#demo").hidden=!S.sample}
+function refresh(){
+  compute();renderChips();renderBar();
+  $("#rows").querySelectorAll("tr[data-id]").forEach(tr=>patchRow(tr,S.byId.get(+tr.dataset.id)));
+}
+
+/* ---------- Export ---------- */
+const COLS=["firstname","lastname","email","phone","company","jobtitle","industry","city","hs_lead_status","source_d_acquisition"];
+function csvCell(v){v=String(v??"");return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function toCSV(){
+  const com=$("#commercial").value;
+  const lines=[COLS.join(",")];
+  for(const r of exportable()){
+    lines.push([r.first,r.last,r.email,r._phone,r._company,r.job,SECT_VALUE.get(r._sector)||"",r.city,STATUT,"Outbound - "+com].map(csvCell).join(","));
+  }
+  return lines.join("\r\n")+"\r\n";
+}
+function fileName(){
+  const slug=s=>norm(s).replace(/ /g,"-");
+  const secs=new Set(exportable().map(r=>r._sector).filter(Boolean));
+  const d=new Date(),day=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  return ["import-hubspot",slug($("#commercial").value),secs.size===1?slug([...secs][0]):"",day].filter(Boolean).join("_")+".csv";
+}
+const dlCap=window.claude&&window.claude.use?window.claude.use("downloads"):null;
+async function saveFile(name,text){
+  if(window.claude&&window.claude.use){
+    const d=await dlCap;
+    if(!d)return "unavailable";
+    try{await d.save({filename:name,data:text});return "saved"}
+    catch(e){return e&&e.code==="declined"?"declined":e&&e.code==="rate_limited"?"busy":"unavailable"}
+  }
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([text],{type:"text/csv;charset=utf-8"}));
+  a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  return "saved";
+}
+$("#dl").addEventListener("click",async()=>{
+  const text=toCSV(),n=exportable().length,res=await saveFile(fileName(),text);
+  const msg=$("#saved");$("#fallback").hidden=true;
+  if(res==="saved"){
+    msg.hidden=false;msg.textContent=`Fichier téléchargé avec ${n} contact${n>1?"s":""}. Il ne reste plus qu'à l'importer.`;
+    $("#hs").classList.add("done");
+    $("#hs").scrollIntoView({block:"center",behavior:matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth"});
+  }else if(res==="unavailable"){
+    msg.hidden=true;$("#fallback").hidden=false;$("#fbText").value=text;$("#hs").scrollIntoView({block:"center"});
+  }else if(res==="busy"){
+    msg.hidden=false;msg.textContent="Une demande de téléchargement est déjà ouverte. Réponds-y, puis réessaie.";
+  }else{
+    msg.hidden=false;msg.textContent="Téléchargement annulé.";
+  }
 });
-$("#dclose").addEventListener("click",closeDetail);
-document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDetail();});
-renderFlow();
-
-/* statuts + workflows */
-const STATUSES=[
- ["Lead non traité","Nouveau lead que personne n'a encore pris en main.","Arrivée (inbound hors séquence)","Prise en main sous 48 h"],
- ["À démarcher","Contact outbound ciblé, pas encore joint.","Import, ou résultat d'appel « aucune réponse »","Appels de prospection"],
- ["En attente","Inbound : en séquence d'arrivée. Outbound : joint, à rappeler.","Workflow d'inscription (inbound), résultat d'appel (outbound)","En cours, Sans réponse ou Pas de réponse"],
- ["Sans réponse, à appeler","Fin de séquence d'arrivée sans réponse. Nouveau.","Workflow de fin de séquence, avec tâche d'appel","Appel sous 2 jours ouvrés"],
- ["En cours","Échange en cours, qualification.","Workflow de sortie de séquence, ou commercial","Transaction ouverte, Non qualifié, Pas intéressé, Pas de réponse"],
- ["Transaction ouverte","Un deal est ouvert.","Posé à la création du deal","Pipeline"],
- ["Négociation en cours","Le prospect négocie après le devis.","Commercial, à la main","Fermé gagné ou Fermé perdu"],
- ["Fermé gagné","Deal gagné, le contact devient client.","Workflow deal gagné","Campagne, relance repeat, newsletter"],
- ["Fermé perdu","Proposition faite qui n'a pas abouti.","Commercial, motif obligatoire","Relance 1 mois après la campagne prévue"],
- ["Pas de réponse","Injoignable ou à rappeler plus tard.","Commercial","Sortie après 90 jours (question n°1)"],
- ["Non qualifié","Hors cible ou sans besoin.","Commercial","Hors base active"],
- ["Pas intéressé","Refus explicite. Gardé en base : nurturing s'il a un email, tâche de rappel à 3 mois (décalable jusqu'à 6).","Commercial","Nurturing, puis rappel ; sans email, fin du suivi"],
- ["Collègue client","Autre contact d'une entreprise cliente.","Commercial","Signal si plusieurs contacts actifs"],
- ["Prestataires FFY","Fournisseurs et partenaires terrain.","Manuel","Hors funnel"]];
-$("#statusrows").innerHTML=STATUSES.map(r=>`<tr><td><span class="pill">${esc(r[0])}</span></td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${esc(r[3])}</td></tr>`).join("");
-const G={garder:[],corriger:[],creer:[],couper:[],trancher:[]},seen=new Set();
-N.forEach(n=>(n.wf||[]).forEach(([nm,k,why,q])=>{if(seen.has(k+nm))return;seen.add(k+nm);G[k].push({nm,why,q,where:n.t});}));
-TRANSVERSE_WF.forEach(([nm,k,where])=>G[k].push({nm,where}));
-$("#wfgroups").innerHTML=Object.entries(G).filter(([,l])=>l.length).map(([k,l])=>`<div class="wfgroup"><h3>${tag(k)}<span style="font:500 12px var(--f-mono);color:var(--muted)">${l.length}</span></h3><ul>${l.map(w=>`<li>${esc(w.nm)}<small>${esc(w.where)}${w.why?" · "+esc(w.why):""}</small>${w.q?qbtn(w.q):""}</li>`).join("")}</ul></div>`).join("");
-
-/* ---------- SUIVI ---------- */
-const KPIS=[
- ["Remplissage moyen des 10 champs obligatoires","71 %","71 %","85 %"],
- ["Contacts contactés depuis 6 mois","22 % (3 608)","22 %","à fixer après nettoyage"],
- ["Deals ouverts sans date de fermeture valide","70 sur 75","70 sur 75","0"],
- ["Tâches en retard de plus de 7 jours","1 462 (audit du 8/10)","1 462","moins de 50"],
- ["Contacts sans propriétaire actif","2 993","2 993","0"],
- ["Contacts en « Pas de réponse »","2 384","2 384","0 au-delà de 90 jours"],
- ["Qualité du lead renseignée","24 %","24 %","100 % des contacts déjà contactés"],
- ["Contacts marketing (plafond facturé 2 000)","623","623","1 500 au maximum, alerte à 1 400"],
- ["Délai de rappel d'un lead entrant (médiane)","21 h (audit du 8/10)","21 h","moins de 24 h"],
- ["CA gagné par canal (inbound, outbound, réseau, appels d'offres, clients)","à mesurer dès que le canal est en place","","suivi à chaque rapport"],
- ["CA gagné par commercial","à mesurer au premier rapport","","objectifs de chaque commercial"]];
-$("#kpis").innerHTML=KPIS.map(r=>`<tr><td>${esc(r[0])}</td><td class="n">${esc(r[1])}</td><td class="n">${esc(r[2])}</td><td>${esc(r[3])}</td></tr>`).join("");
-$("#ritual").innerHTML=[["Un lundi sur deux","Claude livre le rapport à 8 h, en lecture seule","auto"],["Le même lundi","Ivan valide les corrections, réattribue les orphelins, regarde le compteur marketing","15 min"],["Dans la semaine","Chaque commercial traite sa section du rapport","15 min"],["Le 1er du mois","Ivan contrôle les contacts marketing avant toute bascule","5 min"],["Chaque trimestre","Vague de réactivation, revue des seuils et des secteurs prioritaires","1 h"]].map(r=>`<div><b>${r[0]}</b><span>${r[1]}</span><span class="t">${r[2]}</span></div>`).join("");
-$("#progress").innerHTML=PHASES.map(ph=>`<tr><td style="width:46px" class="n">${ph.n}</td><td>${esc(ph.t)}</td><td style="text-align:right"><span class="chip ${ph.chip[0]}">${ph.chip[1]}</span></td></tr>`).join("");
-$("#log").innerHTML=[
- ["08/10/2026","Audit en lecture seule de toute la base et des 75 workflows."],
- ["08/10/2026","Plafond de travail de 1 500 contacts marketing, alerte à 1 400, bascules le 1er du mois."],
- ["08/10/2026","Secteurs prioritaires : plus de 20 k€ gagnés par an, plus l'automobile. Zone prioritaire : Île-de-France."],
- ["08/10/2026","Pas de fermeture automatique des deals : le monitoring signale, le commercial décide."],
- ["08/10/2026","Qualité du lead préremplie par le scoring, corrigée par le commercial, exigée après le premier échange."],
- ["14/10/2026","« Fermé perdu » est réservé aux propositions qui n'ont pas abouti : plus de bascule de « Pas de réponse » vers Fermé perdu."],
- ["14/10/2026","Les tâches du workflow « Appel, à rappeler » sont obsolètes : clôture en masse."],
- ["14/10/2026","Inbound : Typeform GA, SEO et Facebook Ads (plus Démo). Simon a remplacé Uthmânn dans le round robin. Tous les RDV sont traités de la même façon."],
- ["14/10/2026","Outbound : liste Sales Navigator, Lemlist puis import CSV ; surtout des appels depuis HubSpot ; une séquence par verticale, écrite par les commerciaux. Chaque commercial fait inbound et outbound."],
- ["14/10/2026","Canal sur le deal : rempli automatiquement depuis le canal du contact, modifiable à la main. Le suivi des commerciaux porte sur leur CA."],
- ["14/10/2026","Une réponse à un email passe le lead en En cours ; seul un RDV pris crée le deal."],
- ["14/10/2026","Réactivation : principe validé (vivier, vague trimestrielle, sortie après deux vagues sans réponse)."],
- ["14/10/2026","Appels d'offres : hors funnel ; deal créé directement en Fermé gagné, seulement si l'AO est gagné."],
- ["14/10/2026","Questions tranchées : Pas de réponse au vivier après 90 jours ; rotation des leads inbound dès le formulaire ; relance repeat sur les deals gagnés ; tâche Rappeler à J+3 ; étapes du pipeline validées ; Négociation en cours posé à la main ; Lemlist garde le multicanal ; rapport un lundi sur deux à 8 h ; présentation avec le site et un PowerPoint."],
- ["14/10/2026","Fermeture des deals : le commercial passe lui-même en Fermé perdu ; seule exception automatique, un deal bloqué 90 jours à la même étape."],
- ["14/10/2026","Hard bounce et désinscrits : pas de tâche, une vue « Email invalide » par commercial et une ligne dans le rapport."],
- ["14/10/2026","Secteurs des orphelins rattrapés puis attribués avant le nettoyage ; la liste des contacts à supprimer sera validée nominativement par Ivan."],
- ["14/10/2026","Inbound : c'est la prise de RDV, pas la réponse, qui fait passer en En cours et crée le deal."],
- ["14/10/2026","Les tâches dont l'échéance est très dépassée sont clôturées en masse (seuil proposé : 30 jours)."],
- ["14/10/2026","Les commerciaux doivent pouvoir créer facilement leurs séquences dans HubSpot, même d'un seul email."],
- ["14/10/2026","Le secteur reste porté par le contact associé au deal, vérifié à la création du deal."],
-  ["14/10/2026","« Pas intéressé » : le contact reste en base. Avec un email, il entre dans le nurturing ; tâche de rappel à 3 mois, décalable jusqu'à 6. Sans email, fin du suivi."],
- ["14/10/2026","« Lead non traité » est posé automatiquement à la création d'un contact entrant hors séquence."],
- ["14/10/2026","On refait le funnel complet et on tranche les questions avant toute correction dans HubSpot."]
-].map(r=>`<li><time>${r[0]}</time><span>${esc(r[1])}</span></li>`).join("");
-
-/* ---------- NAVIGATION ---------- */
-const VIEWS=["constats","plan","funnel","suivi","questions"];
-function show(v,scrollTop=true){
-  if(!VIEWS.includes(v))v="constats";
-  VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v;});
-  document.querySelectorAll(".nav a").forEach(a=>{if(a.dataset.v===v)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");});
-  if(v!=="funnel")closeDetail();
-  if(scrollTop)window.scrollTo(0,0);
-}
-document.querySelectorAll(".nav a").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();try{history.replaceState(null,"","#"+a.dataset.v);}catch(_){}show(a.dataset.v);}));
-document.addEventListener("click",e=>{
-  const b=e.target.closest(".qlink");if(!b)return;
-  const n=b.dataset.q;try{history.replaceState(null,"","#questions");}catch(_){}
-  show("questions",false);const el=$("#q"+n);
-  el.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
-  el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1800);
+$("#fbCopy").addEventListener("click",async e=>{
+  const t=$("#fbText");
+  try{await navigator.clipboard.writeText(t.value);e.target.textContent="Contenu copié"}
+  catch(err){t.focus();t.select();e.target.textContent="Sélectionné : fais Cmd+C"}
 });
-show(location.hash.replace("#",""),false);
-/* ---------- THÈME ---------- */
-(function(){
-  const root=document.documentElement,btns=document.querySelectorAll(".theme button");
-  const apply=t=>{if(t==="light"||t==="dark")root.dataset.theme=t;else delete root.dataset.theme;btns.forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.t===(t||"system"))));};
-  let saved=null;try{saved=localStorage.getItem("ffy-theme");}catch(_){}
-  apply(saved||"system");
-  btns.forEach(b=>b.addEventListener("click",()=>{apply(b.dataset.t);try{localStorage.setItem("ffy-theme",b.dataset.t);}catch(_){}}));
-})();
+
+/* ---------- Événements ---------- */
+$("#rows").addEventListener("change",e=>{
+  const f=e.target.dataset.f;if(!f)return;
+  const tr=e.target.closest("tr"),r=S.byId.get(+tr.dataset.id),v=e.target.value.trim();
+  if(f==="sector")r.sectorManual=v;
+  else if(f==="company")r.companyOwn=(r._guess&&v===r._company)?"":v;
+  else if(f==="email")r.email=v.toLowerCase();
+  else r[f]=v;
+  refresh();
+  if(f==="phone"&&document.activeElement===e.target)e.target.value=r._phone;
+  if(f==="email"&&document.activeElement===e.target)e.target.value=r.email;
+});
+$("#rows").addEventListener("click",e=>{
+  if(!e.target.dataset.act)return;
+  const r=S.byId.get(+e.target.closest("tr").dataset.id);r.removed=!r.removed;refresh();
+});
+$("#chips").addEventListener("click",e=>{
+  const b=e.target.closest("[data-k]");if(!b)return;
+  S.filter=b.dataset.k;S.limit=200;compute();renderChips();renderTable();$("#tw").scrollTop=0;
+});
+$("#more").addEventListener("click",()=>{S.limit+=200;renderTable()});
+$("#colgrid").addEventListener("change",e=>{
+  const f=e.target.dataset.map;if(!f)return;
+  if(e.target.value==="")delete S.mapping[f];else S.mapping[f]=+e.target.value;
+  if(f==="phone")S.phoneExtra=[];
+  build();showErr("");renderAll();
+});
+$("#commercial").addEventListener("change",e=>{
+  try{localStorage.setItem("ffy-commercial",e.target.value)}catch(err){}
+  renderBar();
+});
+$("#sector").addEventListener("change",()=>{
+  for(const r of S.rows)r.sectorManual=null;
+  refresh();
+  if(S.filter==="error"&&!counts().error){S.filter="all";renderChips();renderTable()}
+});
+const fileInput=$("#file");
+fileInput.addEventListener("change",()=>{if(fileInput.files[0])readFile(fileInput.files[0]);fileInput.value=""});
+const drop=$("#drop");
+["dragenter","dragover"].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add("over")}));
+["dragleave","drop"].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove("over")}));
+drop.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];if(f)readFile(f)});
+window.addEventListener("dragover",e=>e.preventDefault());
+window.addEventListener("drop",e=>e.preventDefault());
+$("#paste").addEventListener("paste",e=>{
+  const t=(e.clipboardData||window.clipboardData).getData("text");
+  e.preventDefault();
+  if(!t.trim())return;
+  showErr("");load(parseDelimited(t),"Lignes collées");$("#paste").value="";
+});
+
+/* ---------- Démarrage ---------- */
+$("#commercial").insertAdjacentHTML("beforeend",COMMERCIAUX.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join(""));
+$("#sector").insertAdjacentHTML("beforeend",SECTEURS.map(([l])=>`<option value="${esc(l)}">${esc(l)}</option>`).join(""));
+try{const c=localStorage.getItem("ffy-commercial");if(c&&COMMERCIAUX.includes(c))$("#commercial").value=c}catch(err){}
+load([
+ ["Prénom","Nom","Email","Téléphone","Entreprise","Poste","Secteur","Ville"],
+ ["JULIE","MARTIN","j.martin@groupe-exemple.fr","06 12 34 56 78","","Directrice marketing","Promoteur Immobilier","Greater Lyon Area, France"],
+ ["Paul","Durand","contact@mairie-exemple.fr","+33 (0)1 69 18 69 18","Mairie d'Exemple","Maire","Mairies / Institutions publiques","Rouen, Normandy, France"],
+ ["Léa","Petit","lea.petit@gmail.com","612345678","","","",""],
+ ["Tom","Noir","","","Acme Exemple","","",""],
+ ["Ana","Roy","ana@exemple","0033 6 11 22 33 44","Acme Exemple","Gérante","Retail",""],
+ ["Max","Blanc","max@energie-exemple.fr","12/34","","Responsable marketing","Énergies Renouvelables",""],
+ ["Julie","Martin","j.martin@groupe-exemple.fr","0612345678","","","",""]
+],"Exemple",true);
 </script>
+
+</body></html>
